@@ -22,7 +22,10 @@ FUENTES = [
     ("soilgrids", ["soil_theta_fc", "soil_theta_wp", "soil_clay", "soil_sand"], {}),
     ("enso", ["icen", "oni"], {}),
     ("senamhi_reportes", ["reservoir_volume_report"], {}),
-    ("estacion", ["station_tmax", "station_tmin", "station_precip"], {}),
+    # Estación y POWER piden el mismo histórico: más años de traslape para validar y, como corren
+    # en paralelo, ambos usan historico=True (la opción es global en nortex_data).
+    ("estacion", ["station_tmax", "station_tmin", "station_precip"],
+     {"start": "1991-01-01", "historico": True}),
     ("power", ["tmax", "tmin", "rain_power", "et0"], {"start": "1991-01-01", "historico": True}),
 ]
 MIN_DIAS_SENAMHI = 365

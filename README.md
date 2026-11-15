@@ -76,6 +76,18 @@ curl -X POST localhost:8000/evaluar/f2 -H "Content-Type: application/json" -d '{
 La respuesta trae, por cultivo, las **cuatro dimensiones** (viabilidad, riesgo, conveniencia y
 fundamentación), los escenarios, el hindcast, la procedencia de cada insumo y las advertencias.
 
+## Prueba con datos reales (15/11/2026, parcela de ejemplo de 4,4 ha)
+
+| Paso | Resultado |
+| :-- | :-- |
+| `POST /parcelas/{id}/actualizar` | 185 s; SRTM, ENSO, reportes SENAMHI, estación y POWER 1991–2026 (52 398 filas) OK; **SoilGrids «tiempo agotado»** (servidor caído) sin bloquear las demás |
+| Altitud | 198,8 m guardada automáticamente desde SRTM para ET0 |
+| `POST /evaluar/f2` (caupí, maíz; goteo) | 1,2 s; ambos «viable»; fundamentación «limitada» porque el suelo quedó por defecto |
+| `POST /evaluar/f1` (4 ventanas de caupí) | 0,4 s; mayo–junio viables, fin de julio ya no cubre la demanda (C = 0,99) |
+
+Cada fuente tiene un límite de tiempo (`LIMITE_SEGUNDOS`) y todas corren en paralelo; si una no
+responde se conserva la serie anterior y se informa en la respuesta.
+
 ## Pendiente
 
 - La descarga inicial de POWER histórico es lenta: ejecutarla en segundo plano y avisar al frontend.
