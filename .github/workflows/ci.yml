@@ -10,6 +10,14 @@ jobs:
           python-version: "3.12"
       - run: pip install ruff
       - run: ruff check .
-# Las pruebas requieren nortex-motor (repositorio privado): ejecutarlas en local con
-#   pip install -e ".[dev]" && pytest
-# o agregar un token con acceso a kafe-art/nortex-motor como secreto del repositorio.
+  pruebas:
+    # Instala exactamente las dependencias fijadas en pyproject.toml (nortex-data v0.6.1 y
+    # nortex-motor), así se detecta cualquier desajuste entre la API y el módulo de datos.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: pytest -q

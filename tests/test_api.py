@@ -34,7 +34,8 @@ def _clima_power(aoi_id):
 
 
 def test_salud_y_modelos(cliente):
-    assert cliente.get("/salud").json()["estado"] == "ok"
+    salud = cliente.get("/salud").json()
+    assert salud["estado"] == "ok", salud["dependencias"]["problemas"]
     modelos = {m["modelo"] for m in cliente.get("/modelos").json()}
     assert {"reservorio", "pcr", "turnos", "estacion_senamhi", "suelo_laboratorio"} <= modelos
     cultivos = cliente.get("/catalogo/cultivos").json()
@@ -172,3 +173,20 @@ def test_fuente_caida_no_bloquea_las_demas(cliente, monkeypatch):
     assert estados["power"] == "ok" and estados["srtm"] == "ok"
     assert _time.time() - t0 < 4  # no espera al servicio colgado
     assert cliente.get("/parcelas").json()[0]["elevation_m"] == 196.0
+
+
+def test_detecta_nortex_data_antiguo(monkeypatch):
+    """El paquete viejo (solo POWER, aoi_file) debe reportarse, no fallar en silencio."""
+    import nortex_data
+
+    from nortex_api import servicio
+
+    def get_dataset_viejo(source=None, aoi_id=None, start=None, end=None, *, variables=None,
+                          aoi_file=None):
+        return None
+
+    monkeypatch.setattr(nortex_data, "get_dataset", get_dataset_viejo)
+    comp = servicio.compatibilidad()
+    assert not comp["ok"]
+    texto = " ".join(comp["problemas"])
+    assert "aoi_path" in texto and "historico" in texto

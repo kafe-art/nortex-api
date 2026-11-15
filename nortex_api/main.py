@@ -11,6 +11,7 @@ incluye unidad, categoría (observado, modelado, escenario, simulado, declarado)
 from __future__ import annotations
 
 import io
+import logging
 from contextlib import asynccontextmanager
 from datetime import date
 
@@ -26,6 +27,9 @@ from nortex_api.modelos import CULTIVOS, MODELOS, describir, esquema
 @asynccontextmanager
 async def _ciclo(_app):
     almacen.inicializar()
+    comp = servicio.compatibilidad()
+    if not comp["ok"]:
+        logging.getLogger("nortex_api").error("Dependencias incompatibles: %s", "; ".join(comp["problemas"]))
     yield
 
 
@@ -47,7 +51,9 @@ def _modelo(nombre: str) -> None:
 
 @app.get("/salud", tags=["general"])
 def salud() -> dict:
-    return {"estado": "ok", "parcelas": len(almacen.parcelas())}
+    comp = servicio.compatibilidad()
+    return {"estado": "ok" if comp["ok"] else "dependencias incompatibles",
+            "parcelas": len(almacen.parcelas()), "dependencias": comp}
 
 
 @app.get("/catalogo/cultivos", tags=["general"])

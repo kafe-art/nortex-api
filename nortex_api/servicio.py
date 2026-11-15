@@ -39,6 +39,38 @@ LIMITE_SEGUNDOS = {"srtm": 120, "soilgrids": 180, "enso": 120, "senamhi_reportes
 _contextos: dict[tuple, object] = {}
 
 
+def compatibilidad() -> dict:
+    """Comprueba que el nortex_data instalado es el que espera la API (v0.6.1 o posterior).
+
+    El paquete antiguo (solo POWER, ``aoi_file``) se instala sin error pero hace fallar las
+    descargas: este chequeo lo detecta al arrancar y en ``/salud``.
+    """
+    import inspect
+
+    problemas = []
+    try:
+        import nortex_data
+        from nortex_data import get_dataset
+    except ImportError as error:
+        return {"ok": False, "problemas": [f"nortex_data no está instalado: {error}"]}
+    parametros = inspect.signature(get_dataset).parameters
+    for nombre in ("aoi_path", "historico"):
+        if nombre not in parametros:
+            problemas.append(f"get_dataset no acepta «{nombre}»: versión antigua de nortex_data")
+    try:
+        from nortex_data.utils.core import SOURCES
+        faltan = sorted({f for f, _, _ in FUENTES} - set(SOURCES))
+    except ImportError:
+        faltan = sorted({f for f, _, _ in FUENTES})
+    if faltan:
+        problemas.append(f"nortex_data no tiene las fuentes {faltan}")
+    if problemas:
+        problemas.append('Instale la versión fija: pip install "nortex-data @ '
+                         'git+https://github.com/BRYTNEI/nortex-data.git@v0.6.1"')
+    return {"ok": not problemas, "nortex_data": getattr(nortex_data, "__file__", None),
+            "problemas": problemas}
+
+
 @contextmanager
 def _entorno():
     """Apunta nortex_data a las carpetas de la API (CSV locales)."""

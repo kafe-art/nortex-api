@@ -16,6 +16,17 @@ pip install -e ".[dev]"            # instala también nortex-data y nortex-motor
 uvicorn nortex_api.main:app --reload
 ```
 
+La API usa **BRYTNEI/nortex-data en la etiqueta v0.6.1** (14 fuentes, `aoi_path`, `historico`).
+No instale el paquete antiguo de `kafe-art/nortex-data` (solo POWER): se instala sin error,
+pero las descargas fallan. `GET /salud` lo comprueba y, si hay un desajuste, devuelve
+`"estado": "dependencias incompatibles"` con el comando para corregirlo. Si ya tenía otro
+`nortex_data` instalado:
+
+```bash
+pip uninstall -y nortex-data
+pip install -e ".[dev]"
+```
+
 Documentación interactiva: http://127.0.0.1:8000/docs
 
 Carpeta de trabajo: `NORTEX_API_DATA` (por defecto `./datos_api`, no se versiona).
