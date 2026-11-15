@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+import threading
 import time
 from contextlib import contextmanager
 
@@ -25,6 +26,10 @@ FUENTES = [
     ("power", ["tmax", "tmin", "rain_power", "et0"], {"start": "1991-01-01", "historico": True}),
 ]
 MIN_DIAS_SENAMHI = 365
+#: Límite por fuente (s). Si un servicio no responde (p. ej. SoilGrids caído), se marca
+#: «tiempo agotado» y las demás fuentes siguen. Las fuentes corren en paralelo.
+LIMITE_SEGUNDOS = {"srtm": 120, "soilgrids": 180, "enso": 120, "senamhi_reportes": 180,
+                   "estacion": 300, "power": 1500}
 _contextos: dict[tuple, object] = {}
 
 
@@ -83,34 +88,57 @@ def actualizar_fuentes(aoi_id: str, fuentes: list[str] | None = None) -> list[di
 
     if almacen.parcela(aoi_id) is None:
         raise KeyError(aoi_id)
-    resumen = []
-    ruta_aois = str(almacen.escribir_aois())
+    pedidas = [f for f in FUENTES if not fuentes or f[0] in fuentes]
+    resultados: dict[str, dict] = {}
+
+    def tarea(fuente, variables, opciones, ruta_aois):
+        t0 = time.time()
+        try:
+            df = get_dataset(fuente, aoi_id, variables=variables, aoi_path=ruta_aois, **opciones)
+            df.to_parquet(almacen.ruta_serie(aoi_id, fuente), index=False)
+            fechas = df["date"].dropna()
+            resultados[fuente] = {
+                "fuente": fuente, "filas": len(df), "estado": "ok",
+                "desde": None if fechas.empty else str(fechas.min().date()),
+                "hasta": None if fechas.empty else str(fechas.max().date()),
+                "segundos": round(time.time() - t0, 1), "_df": df}
+        except Exception as error:  # una fuente caída no detiene las demás
+            log.exception("Fuente %s falló para %s", fuente, aoi_id)
+            resultados[fuente] = {"fuente": fuente, "filas": 0, "estado": "error", "detalle": str(error),
+                                  "segundos": round(time.time() - t0, 1)}
+
+    def lanzar(grupo, ruta_aois):
+        """Ejecuta el grupo en paralelo; cada fuente tiene su propio límite de tiempo."""
+        hilos = []
+        for fuente, variables, opciones in grupo:
+            h = threading.Thread(target=tarea, args=(fuente, variables, opciones, ruta_aois), daemon=True)
+            h.start()
+            hilos.append((fuente, h, time.time()))
+        for fuente, h, t0 in hilos:
+            h.join(max(0.0, LIMITE_SEGUNDOS.get(fuente, 300) - (time.time() - t0)))
+            if h.is_alive():  # el hilo sigue en segundo plano; su resultado se descarta
+                previa = almacen.leer_serie(aoi_id, fuente) is not None
+                resultados[fuente] = {
+                    "fuente": fuente, "filas": 0, "estado": "tiempo agotado",
+                    "detalle": (f"El servicio no respondió en {LIMITE_SEGUNDOS.get(fuente, 300)} s"
+                                + ("; se conserva la serie descargada antes" if previa else "")),
+                    "segundos": round(time.time() - t0, 1)}
+
     with _entorno():
-        for fuente, variables, opciones in FUENTES:
-            if fuentes and fuente not in fuentes:
-                continue
-            t0 = time.time()
-            try:
-                df = get_dataset(fuente, aoi_id, variables=variables, aoi_path=ruta_aois, **opciones)
-                df.to_parquet(almacen.ruta_serie(aoi_id, fuente), index=False)
-                fechas = df["date"].dropna()
-                resumen.append({"fuente": fuente, "filas": len(df), "estado": "ok",
-                                "desde": None if fechas.empty else str(fechas.min().date()),
-                                "hasta": None if fechas.empty else str(fechas.max().date()),
-                                "segundos": round(time.time() - t0, 1)})
-                if fuente == "srtm":  # la altitud real alimenta la presión y Rso de ET0
-                    elev = df.loc[df["variable"] == "elevation", "value"]
-                    if len(elev):
-                        p = almacen.parcela(aoi_id)
-                        p["elevation_m"] = float(elev.iloc[0])
-                        almacen.guardar_parcela(p)
-                        ruta_aois = str(almacen.escribir_aois())
-            except Exception as error:  # una fuente caída no detiene las demás
-                log.exception("Fuente %s falló para %s", fuente, aoi_id)
-                resumen.append({"fuente": fuente, "filas": 0, "estado": "error", "detalle": str(error),
-                                "segundos": round(time.time() - t0, 1)})
+        ruta_aois = str(almacen.escribir_aois())
+        # SRTM primero: la altitud real alimenta la presión y Rso de ET0 en POWER.
+        lanzar([f for f in pedidas if f[0] == "srtm"], ruta_aois)
+        srtm = resultados.get("srtm", {})
+        if srtm.get("estado") == "ok":
+            elev = srtm["_df"].loc[srtm["_df"]["variable"] == "elevation", "value"]
+            if len(elev):
+                p = almacen.parcela(aoi_id)
+                p["elevation_m"] = float(elev.iloc[0])
+                almacen.guardar_parcela(p)
+                ruta_aois = str(almacen.escribir_aois())
+        lanzar([f for f in pedidas if f[0] != "srtm"], ruta_aois)
     _contextos.clear()
-    return resumen
+    return [{k: v for k, v in resultados[f[0]].items() if k != "_df"} for f in pedidas]
 
 
 def estado_fuentes(aoi_id: str) -> list[dict]:

@@ -129,3 +129,34 @@ def test_estacion_senamhi_reemplaza_a_noaa(cliente):
     assert r.json()["filas_guardadas"] == len(dias)
     ctx = servicio.contexto("chacra_1")
     assert ctx.validacion is not None and ctx.validacion["estacion"] == "SENAMHI Chulucanas"
+
+
+def test_fuente_caida_no_bloquea_las_demas(cliente, monkeypatch):
+    import time as _time
+
+    import nortex_data
+
+    from nortex_api import servicio
+
+    cliente.post("/parcelas", json={"aoi_id": "chacra_1", "nombre": "C", "geometria": POLIGONO})
+
+    def falso(fuente, aoi_id, *a, **k):
+        if fuente == "soilgrids":
+            _time.sleep(5)  # servicio colgado
+        if fuente == "enso":
+            raise RuntimeError("HTTP 503")
+        return pd.DataFrame({"date": [pd.Timestamp("2024-01-01")], "aoi_id": [aoi_id], "lat": [0.0],
+                             "lon": [0.0], "source": [fuente], "product": ["p"],
+                             "variable": ["elevation" if fuente == "srtm" else "x"], "value": [196.0],
+                             "unit": ["m"], "qc_flag": ["ok"]})
+
+    monkeypatch.setattr(nortex_data, "get_dataset", falso)
+    monkeypatch.setitem(servicio.LIMITE_SEGUNDOS, "soilgrids", 0.5)
+    t0 = _time.time()
+    r = cliente.post("/parcelas/chacra_1/actualizar").json()["fuentes"]
+    estados = {f["fuente"]: f["estado"] for f in r}
+    assert estados["soilgrids"] == "tiempo agotado"
+    assert estados["enso"] == "error"
+    assert estados["power"] == "ok" and estados["srtm"] == "ok"
+    assert _time.time() - t0 < 4  # no espera al servicio colgado
+    assert cliente.get("/parcelas").json()[0]["elevation_m"] == 196.0
