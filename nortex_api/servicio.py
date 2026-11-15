@@ -27,12 +27,15 @@ FUENTES = [
     ("estacion", ["station_tmax", "station_tmin", "station_precip"],
      {"start": "1991-01-01", "historico": True}),
     ("power", ["tmax", "tmin", "rain_power", "et0"], {"start": "1991-01-01", "historico": True}),
+    # IMERG (0,1°) solo para el riesgo por exceso de lluvia: capta mejor los aguaceros que POWER.
+    # El motor lo usa si cubre ≥ 15 años; si no, cae a la lluvia de POWER.
+    ("imerg", ["precipitation"], {"start": "2001-01-01", "historico": True}),
 ]
 MIN_DIAS_SENAMHI = 365
 #: Límite por fuente (s). Si un servicio no responde (p. ej. SoilGrids caído), se marca
 #: «tiempo agotado» y las demás fuentes siguen. Las fuentes corren en paralelo.
 LIMITE_SEGUNDOS = {"srtm": 120, "soilgrids": 180, "enso": 120, "senamhi_reportes": 180,
-                   "estacion": 300, "power": 1500}
+                   "estacion": 300, "power": 1500, "imerg": 1500}
 _contextos: dict[tuple, object] = {}
 
 
@@ -198,7 +201,9 @@ def contexto(aoi_id: str):
                                          local[local["variable"] == "reservoir_volume"]) if d is not None])
     ctx = preparar(clima, estacion=estacion, nombre_estacion=nombre,
                    suelo_datos=almacen.leer_serie(aoi_id, "soilgrids"), local=local,
-                   enso=almacen.leer_serie(aoi_id, "enso"), reservorios=reservorios)
+                   enso=almacen.leer_serie(aoi_id, "enso"), reservorios=reservorios,
+                   lluvia_datos=almacen.leer_serie(aoi_id, "imerg"),
+                   relieve=almacen.leer_serie(aoi_id, "srtm"))
     _contextos.clear()
     _contextos[clave] = ctx
     return ctx
@@ -208,17 +213,21 @@ def _tabla(df: pd.DataFrame) -> list[dict]:
     return df.astype(object).where(df.notna(), None).to_dict(orient="records")
 
 
-def evaluar_f1(aoi_id: str, cultivo: str, desde, hasta, paso_dias: int, **kw) -> dict:
+def evaluar_f1(aoi_id: str, cultivo: str, desde, hasta, paso_dias: int,
+               historial: list[str] | None = None, **kw) -> dict:
     from nortex_motor.decision import f1_ventanas
 
-    out = f1_ventanas(contexto(aoi_id), cultivo, desde, hasta, paso_dias, **kw)
+    out = f1_ventanas(contexto(aoi_id), cultivo, desde, hasta, paso_dias,
+                      historial=historial or None, **kw)
     return {"funcion": "F1", "regla_orden": out["regla_orden"], "tabla": _tabla(out["tabla"]),
             "decisiones": [d.a_dict() for d in out["decisiones"]]}
 
 
-def evaluar_f2(aoi_id: str, cultivos: list[str], inicio, historial: list[str], **kw) -> dict:
+def evaluar_f2(aoi_id: str, cultivos: list[str], inicio, historial: list[str],
+               renovacion_confirmada: bool = False, **kw) -> dict:
     from nortex_motor.decision import f2_cultivos
 
-    out = f2_cultivos(contexto(aoi_id), cultivos, inicio, historial, **kw)
+    out = f2_cultivos(contexto(aoi_id), cultivos, inicio, historial,
+                      renovacion_confirmada=renovacion_confirmada, **kw)
     return {"funcion": "F2", "regla_orden": out["regla_orden"], "tabla": _tabla(out["tabla"]),
             "decisiones": [d.a_dict() for d in out["decisiones"]]}

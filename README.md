@@ -52,6 +52,18 @@ Carpeta de trabajo: `NORTEX_API_DATA` (por defecto `./datos_api`, no se versiona
 | `riego_parcela` | Agricultor | Eficiencia de riego |
 | `historial` | Agricultor | Transición (F2) |
 
+## Riesgo climático y reglas de transición
+
+- Las descargas incluyen **IMERG** (0,1°, desde 2001) solo para el riesgo por **exceso de
+  lluvia**; si cubre menos de 15 años, el motor usa la lluvia de POWER. **SRTM** (pendiente) y
+  SoilGrids (arcilla) se usan como factores de drenaje.
+- Cada decisión trae `clima_escenarios` (déficit, lluvia máxima en 5 días y días de calor del
+  año análogo de cada escenario, por separado) y `extremos` (frecuencia en todos los años y peor
+  año). Los escenarios se llaman `deficit_bajo/medio/alto`: describen el clima, no si es bueno.
+- `reglas` de F2 llevan tipo: **condicionante** (RT-01, RT-05) cambia la viabilidad;
+  **informativa** (RT-02, RT-04) solo avisa. Enviar `"renovacion_confirmada": true` cuando el
+  agricultor decidió renovar el huerto. F1 también acepta `historial`.
+
 ## Ejemplo de flujo
 
 ```bash

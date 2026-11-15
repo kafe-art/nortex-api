@@ -113,6 +113,18 @@ def test_evaluar_f1_y_f2_con_datos_locales(cliente):
     assert f2.status_code == 200, f2.text
     tabla = {f["cultivo"]: f for f in f2.json()["tabla"]}
     assert tabla["caupi"]["transicion"] == "cambio"
+    d2 = f2.json()["decisiones"][0]
+    escenarios = [c["escenario"] for c in d2["clima_escenarios"]]
+    assert escenarios == ["deficit_bajo", "deficit_medio", "deficit_alto"]
+    assert any(r["factor"] == "Exceso de lluvia (potencial)" for r in d2["riesgo"])
+
+    # RT-01 condicionante: desde un huerto, el cambio queda «por determinar» hasta confirmar la renovación
+    base = {"aoi_id": "chacra_1", "cultivos": ["caupi"], "inicio": "2021-06-01",
+            "historial": ["limon_sutil"], "dotacion_m3_ha": 20000}
+    sin = cliente.post("/evaluar/f2", json=base).json()["tabla"][0]
+    con = cliente.post("/evaluar/f2", json=dict(base, renovacion_confirmada=True)).json()["tabla"][0]
+    assert sin["viabilidad"] == "por determinar" and "RT-01 (condicionante)" in sin["reglas"]
+    assert con["viabilidad"] != "por determinar"
     assert cliente.post("/evaluar/f2", json={"aoi_id": "chacra_1", "cultivos": ["papa"],
                                              "inicio": "2021-06-01"}).status_code == 422
 

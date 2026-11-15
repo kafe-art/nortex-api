@@ -201,6 +201,8 @@ class F1Entrada(Opciones):
     desde: date
     hasta: date
     paso_dias: int = Field(15, ge=1, le=120)
+    historial: list[str] = Field(default_factory=list,
+                                 description="Cultivos anteriores (opcional): activa las reglas RT")
 
 
 class F2Entrada(Opciones):
@@ -208,6 +210,8 @@ class F2Entrada(Opciones):
     cultivos: list[str] = Field(default_factory=lambda: list(CULTIVOS))
     inicio: date
     historial: list[str] = Field(default_factory=list, description="Cultivos anteriores, el último al final")
+    renovacion_confirmada: bool = Field(
+        False, description="El agricultor decidió renovar el huerto (levanta RT-01 condicionante)")
 
 
 def _ejecutar(funcion, *args, **kw):
@@ -226,8 +230,10 @@ def f1(e: F1Entrada) -> dict:
     """F1 — ¿cuándo conviene sembrar? Ventanas cada `paso_dias` entre `desde` y `hasta`."""
     if (e.hasta - e.desde).days > 366:
         raise HTTPException(422, "El rango de ventanas no puede superar un año")
+    if set(e.historial) - set(CULTIVOS):
+        raise HTTPException(422, f"Cultivos desconocidos: {sorted(set(e.historial) - set(CULTIVOS))}")
     return _ejecutar(servicio.evaluar_f1, e.aoi_id, e.cultivo, e.desde, e.hasta, e.paso_dias,
-                     **e.kwargs(e.aoi_id))
+                     e.historial, **e.kwargs(e.aoi_id))
 
 
 @app.post("/evaluar/f2", tags=["evaluación"])
@@ -236,4 +242,5 @@ def f2(e: F2Entrada) -> dict:
     desconocidos = set(e.cultivos + e.historial) - set(CULTIVOS)
     if desconocidos:
         raise HTTPException(422, f"Cultivos desconocidos: {sorted(desconocidos)}")
-    return _ejecutar(servicio.evaluar_f2, e.aoi_id, e.cultivos, e.inicio, e.historial, **e.kwargs(e.aoi_id))
+    return _ejecutar(servicio.evaluar_f2, e.aoi_id, e.cultivos, e.inicio, e.historial,
+                     e.renovacion_confirmada, **e.kwargs(e.aoi_id))
