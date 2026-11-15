@@ -1,0 +1,10 @@
+.git
+.github
+.pytest_cache
+.ruff_cache
+__pycache__
+*.egg-info
+datos_api
+tests
+.env
+web_respaldo_pulso

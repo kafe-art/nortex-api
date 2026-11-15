@@ -1,0 +1,22 @@
+# Despliegue en Render (https://render.com) con el Dockerfile de este repositorio.
+# En Render: New → Blueprint → elegir kafe-art/nortex-api. La web queda en https://<servicio>.onrender.com/app/
+# El disco persistente requiere un plan de pago; en el plan gratuito los datos descargados se
+# pierden al reiniciar (hay que volver a «Descargar datos»).
+services:
+  - type: web
+    name: nortex-api
+    runtime: docker
+    plan: starter
+    region: oregon
+    healthCheckPath: /salud
+    envVars:
+      - key: NORTEX_API_DATA
+        value: /datos
+      - key: NORTEX_CORS          # dominios del frontend si se publica aparte (separados por comas)
+        value: "*"
+      - key: EARTHDATA_TOKEN      # opcional: IMERG por OPeNDAP (si falta, se usa la copia pública)
+        sync: false
+    disk:
+      name: datos
+      mountPath: /datos
+      sizeGB: 1

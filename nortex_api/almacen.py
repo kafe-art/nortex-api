@@ -20,7 +20,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from nortex_api.modelos import MODELOS, columnas, tipo_sql
+from nortex_api.modelos import MODELOS, SOLO_API, columnas, tipo_sql
 
 
 def carpeta() -> Path:
@@ -85,7 +85,7 @@ def borrar(modelo: str, fila_id: int) -> bool:
 
 def exportar_csv(modelo: str) -> None:
     """Escribe el CSV del modelo en ``local/`` con el formato de las plantillas de nortex_data."""
-    if modelo == "estacion_senamhi":
+    if modelo in SOLO_API:
         return
     filas = listar(modelo)
     destino = carpeta() / "local" / f"{modelo}.csv"

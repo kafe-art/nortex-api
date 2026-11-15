@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 import os
 import threading
 import time
+import uuid
 from contextlib import contextmanager
 
 import pandas as pd
 from shapely.geometry import shape
 
 from nortex_api import almacen
+from nortex_api.modelos import IMPACTO, MODELOS, columnas
 
 log = logging.getLogger("nortex_api")
 
@@ -245,21 +248,185 @@ def _tabla(df: pd.DataFrame) -> list[dict]:
     return df.astype(object).where(df.notna(), None).to_dict(orient="records")
 
 
+def _decision_web(decision) -> dict:
+    """Expone los insumos efectivamente usados, sin recalcular ni alterar el motor."""
+    salida = decision.a_dict()
+    ev = decision.evaluacion
+    campos = (
+        ("intervalo_dias", ev.riego.intervalo_dias, "días", "turnos"),
+        ("dotacion_m3_ha", ev.riego.dotacion_m3_ha, "m³/ha", "dotacion"),
+        ("eficiencia", ev.riego.eficiencia, "-", "eficiencia"),
+        ("theta_fc", ev.suelo.theta_fc, "m³/m³", "suelo"),
+        ("theta_wp", ev.suelo.theta_wp, "m³/m³", "suelo"),
+    )
+    salida["insumos_efectivos"] = {
+        nombre: {"valor": valor, "unidad": unidad, "fuente": ev.procedencia.get(origen, "sin fuente"),
+                 "categoria": "insumo", "nota": "Valor usado en esta evaluación; no medición actual."}
+        for nombre, valor, unidad, origen in campos
+    }
+    return salida
+
+
 def evaluar_f1(aoi_id: str, cultivo: str, desde, hasta, paso_dias: int,
                historial: list[str] | None = None, **kw) -> dict:
     from nortex_motor.decision import f1_ventanas
 
+    aplicar_validaciones()
     out = f1_ventanas(contexto(aoi_id), cultivo, desde, hasta, paso_dias,
                       historial=historial or None, **kw)
     return {"funcion": "F1", "regla_orden": out["regla_orden"], "tabla": _tabla(out["tabla"]),
-            "decisiones": [d.a_dict() for d in out["decisiones"]]}
+            "decisiones": [_decision_web(d) for d in out["decisiones"]]}
 
 
 def evaluar_f2(aoi_id: str, cultivos: list[str], inicio, historial: list[str],
                renovacion_confirmada: bool = False, **kw) -> dict:
     from nortex_motor.decision import f2_cultivos
 
+    aplicar_validaciones()
     out = f2_cultivos(contexto(aoi_id), cultivos, inicio, historial,
                       renovacion_confirmada=renovacion_confirmada, **kw)
     return {"funcion": "F2", "regla_orden": out["regla_orden"], "tabla": _tabla(out["tabla"]),
-            "decisiones": [d.a_dict() for d in out["decisiones"]]}
+            "decisiones": [_decision_web(d) for d in out["decisiones"]]}
+
+
+# --- Validaciones agronómicas (INIA / MIDAGRI) ---------------------------------------------------
+
+def _validaciones_guardadas() -> dict[str, dict[str, dict]]:
+    """Última validación por cultivo y parámetro (por fecha y luego por orden de carga)."""
+    out: dict[str, dict[str, dict]] = {}
+    filas = sorted(almacen.listar("validacion_parametro"), key=lambda f: (f["fecha"], f["id"]))
+    for f in filas:
+        out.setdefault(f["cultivo"], {})[f["parametro"]] = {
+            "valor": json.loads(f["valor"]), "fuente": f"{f['fuente']} ({f['fecha']})"}
+    return out
+
+
+def aplicar_validaciones() -> None:
+    """Carga en el motor los parámetros validados que están guardados."""
+    from nortex_motor.catalogo import establecer_validaciones
+
+    establecer_validaciones(_validaciones_guardadas())
+
+
+def comprobar_validacion(fila: dict) -> None:
+    """Rechaza un parámetro inexistente o un valor que el motor no acepta (lo prueba y revierte)."""
+    from nortex_motor.catalogo import cultivo, establecer_validaciones
+
+    try:
+        valor = json.loads(fila["valor"])
+    except (TypeError, ValueError):
+        raise ValueError('«valor» debe ser JSON: 36 · [35, 55] · "media"') from None
+    c = cultivo(fila["cultivo"])
+    if fila["parametro"] not in c.parametros:
+        raise ValueError(f"{fila['cultivo']} no tiene el parámetro {fila['parametro']!r}. "
+                         f"Opciones: {sorted(c.parametros)}")
+    previo = c.get(fila["parametro"])
+    if previo is not None and isinstance(previo, list) != isinstance(valor, list):
+        raise ValueError(f"{fila['parametro']} espera un valor del mismo tipo que {json.dumps(previo)}")
+    prueba = _validaciones_guardadas()
+    prueba.setdefault(fila["cultivo"], {})[fila["parametro"]] = {"valor": valor, "fuente": fila["fuente"]}
+    try:
+        establecer_validaciones(prueba)
+    finally:
+        aplicar_validaciones()
+
+
+# --- Plantillas y faltantes ----------------------------------------------------------------------
+
+_EJEMPLO_TIPO = {"fecha": "2026-12-01", "num": "0", "entero": "1", "texto": "", "cultivo": "caupi"}
+
+
+def plantilla_csv(modelo: str) -> str:
+    """CSV con las columnas del modelo y una fila de ejemplo (fuente=EJEMPLO: se ignora al importar)."""
+    cols = MODELOS[modelo][2]
+    fila = []
+    for nombre, tipo, _, minimo, _ in cols:
+        valor = str(minimo) if minimo is not None and tipo in {"num", "entero"} else _EJEMPLO_TIPO[tipo]
+        fila.append("EJEMPLO" if nombre == "fuente" else valor)
+    return ",".join(c[0] for c in cols) + "\n" + ",".join(fila) + "\n"
+
+
+def _es_ejemplo(fila: dict) -> bool:
+    return any("ejemplo" in str(fila.get(k) or "").lower() for k in ("fuente", "comision", "ambito"))
+
+
+def faltantes(aoi_id: str) -> dict:
+    """Qué datos tiene la parcela, cuáles son de ejemplo y qué falta para una decisión definitiva."""
+    from nortex_motor.catalogo import cargar_cultivos
+
+    p = almacen.parcela(aoi_id)
+    if p is None:
+        raise KeyError(aoi_id)
+    items = []
+    tipo = (p["geometria"] or {}).get("type")
+    ejemplo = "ejemplo" in (aoi_id + " " + p["nombre"]).lower()
+    if ejemplo:
+        detalle = "Parcela de ejemplo: dibuje el contorno de una chacra real sobre la imagen satelital."
+    elif tipo == "Point":
+        detalle = "Solo un punto: dibuje el contorno de la chacra."
+    else:
+        detalle = (f"Polígono de {p['area_ha']:.2f} ha, altitud "
+                   + (f"{p['elevation_m']:.0f} m (SRTM)." if p["elevation_m"] else "sin descargar."))
+    items.append({"dato": "coordenadas", "grupo": "parcela", "origen": "Agricultor (mapa)",
+                  "estado": "ejemplo" if ejemplo else "aproximado" if tipo == "Point" else "ok",
+                  "detalle": detalle,
+                  "impacto": "Todo el análisis (clima, suelo, relieve) se calcula en este lugar."})
+    for f in estado_fuentes(aoi_id):
+        if f["estado"] != "ok":
+            items.append({"dato": f"fuente {f['fuente']}", "grupo": "fuentes por API", "estado": "falta",
+                          "origen": "descarga automática", "detalle": "Use «Descargar datos».",
+                          "impacto": "Sin POWER no se puede evaluar; las demás mejoran la fundamentación."})
+    for modelo, (origen, impacto) in IMPACTO.items():
+        filas = almacen.listar(modelo, aoi_id if "aoi_id" in columnas(modelo) else None)
+        reales = [f for f in filas if not _es_ejemplo(f)]
+        if modelo == "estacion_senamhi":
+            estado = "ok" if len(reales) >= MIN_DIAS_SENAMHI else "falta"
+        else:
+            estado = "ok" if reales else "ejemplo" if filas else "falta"
+        items.append({"dato": modelo, "grupo": "datos locales", "origen": origen, "estado": estado,
+                      "filas": len(filas), "filas_ejemplo": len(filas) - len(reales),
+                      "detalle": MODELOS[modelo][0], "impacto": impacto,
+                      "plantilla": f"/plantillas/{modelo}.csv"})
+    aplicar_validaciones()
+    claves = {"calor_floracion_c", "floracion_dias", "floracion_meses", "kc_constante", "kc_med"}
+    por_validar = {}
+    for cid, c in cargar_cultivos().items():
+        pend = sorted(n for n, prm in c.parametros.items() if prm.estado != "VALIDADO")
+        por_validar[cid] = {"total": len(pend), "prioritarios": [n for n in pend if n in claves]}
+    estado = {i["dato"]: i["estado"] for i in items}
+    definitiva = all(estado.get(k) == "ok" for k in ("coordenadas", "pcr", "turnos"))
+    return {"aoi_id": aoi_id, "viabilidad_definitiva_posible": definitiva,
+            "items": items, "parametros_por_validar": por_validar}
+
+
+# --- Descarga en segundo plano -------------------------------------------------------------------
+
+_tareas: dict[str, dict] = {}
+
+
+def actualizar_en_segundo_plano(aoi_id: str, fuentes: list[str] | None = None) -> dict:
+    """Lanza la descarga en un hilo y devuelve la tarea; el frontend consulta ``/tareas/{id}``."""
+    if almacen.parcela(aoi_id) is None:
+        raise KeyError(aoi_id)
+    activa = next((t for t in _tareas.values() if t["aoi_id"] == aoi_id and t["estado"] == "en curso"), None)
+    if activa:
+        return activa
+    t = {"id": uuid.uuid4().hex[:12], "aoi_id": aoi_id, "estado": "en curso",
+         "inicio": time.strftime("%Y-%m-%dT%H:%M:%S"), "fin": None, "fuentes": None, "error": None}
+    _tareas[t["id"]] = t
+
+    def correr():
+        try:
+            t["fuentes"] = actualizar_fuentes(aoi_id, fuentes)
+            t["estado"] = "terminada"
+        except Exception as error:  # se informa en la tarea
+            log.exception("Descarga en segundo plano falló para %s", aoi_id)
+            t.update(estado="error", error=str(error))
+        t["fin"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+
+    threading.Thread(target=correr, daemon=True).start()
+    return t
+
+
+def tarea(tarea_id: str) -> dict:
+    return _tareas[tarea_id]

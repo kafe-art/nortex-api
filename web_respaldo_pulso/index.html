@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1d2b22">
+  <title>NORTEX — El pulso de la chacra · San Lorenzo</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
+<header class="cab">
+  <div class="marca">
+    <svg class="pulso" viewBox="0 0 64 24" aria-hidden="true"><path d="M1 13h14l4-9 6 17 5-12 3 4h30"/></svg>
+    <div><strong>NORTEX</strong><span>El pulso de la chacra · San Lorenzo, Tambogrande</span></div>
+  </div>
+  <div class="parcela-activa">
+    <label for="sel-parcela">Chacra</label>
+    <select id="sel-parcela"><option value="">— ninguna —</option></select>
+  </div>
+  <div id="estado-api" class="estado-api" role="status">conectando…</div>
+</header>
+
+<nav class="pestanas" role="tablist" aria-label="Pantallas">
+  <button role="tab" data-tab="mapa" aria-selected="true"><b>1</b> Sintoniza tu chacra</button>
+  <button role="tab" data-tab="chequeo" aria-selected="false"><b>2</b> Chequeo</button>
+  <button role="tab" data-tab="f2" aria-selected="false"><b>3</b> ¿Qué sembrar?</button>
+  <button role="tab" data-tab="f1" aria-selected="false"><b>4</b> ¿Cuándo sembrar?</button>
+  <button role="tab" data-tab="secuencia" aria-selected="false"><b>5</b> Secuencia de campañas</button>
+</nav>
+
+<main id="contenido">
+  <!-- 1. Sintoniza tu chacra ---------------------------------------------------------------- -->
+  <section id="tab-mapa" class="tab activo" role="tabpanel">
+    <div class="escena">
+      <div class="mapa-caja">
+        <div id="mapa" aria-label="Mapa satelital de San Lorenzo"></div>
+        <p class="ayuda sobre-mapa">Abre «Registrar una chacra nueva» para marcar esquinas. El año del visor no cambia la fecha de la imagen satelital.</p>
+      </div>
+      <div class="panel">
+        <h2>Sintoniza tu chacra</h2>
+        <p class="ayuda">Elija su chacra arriba o dibújela en el mapa. Luego consulte el historial disponible de
+          satélite para ese lugar.</p>
+        <div id="parcela-info"></div>
+        <button id="btn-descargar" class="primario grande" type="button">Traer datos de la NASA</button>
+        <div id="progreso" class="mensaje" role="status"></div>
+        <ul id="senales" class="senales" aria-label="Fuentes de datos"></ul>
+
+        <details id="det-registro">
+          <summary>Registrar una chacra nueva</summary>
+          <form id="form-parcela">
+            <label>Nombre <input name="nombre" required placeholder="Chacra de Juan, lote 3"></label>
+            <label>Identificador <input name="aoi_id" required pattern="[a-z0-9_]{3,40}"
+                   placeholder="chacra_juan_3" title="minúsculas, números y _ (3 a 40)"></label>
+            <p id="info-poligono" class="ayuda">0 puntos marcados.</p>
+            <div class="fila-botones">
+              <button type="button" id="btn-deshacer">Deshacer punto</button>
+              <button type="button" id="btn-limpiar">Borrar contorno</button>
+            </div>
+            <label>o pegue coordenadas (latitud, longitud por línea)
+              <textarea id="coords" rows="3" placeholder="-4.9921, -80.3127"></textarea></label>
+            <div class="fila-botones">
+              <button type="button" id="btn-coords">Usar coordenadas</button>
+              <button type="submit" class="primario">Guardar chacra</button>
+            </div>
+          </form>
+          <div id="msg-parcela" class="mensaje" role="status"></div>
+        </details>
+      </div>
+    </div>
+    <div class="panel" id="clima">
+      <h2>El archivo del clima de tu chacra</h2>
+      <div id="clima-cuerpo"><p class="ayuda">Elija una chacra para ver su clima.</p></div>
+    </div>
+  </section>
+
+  <!-- 2. Chequeo ---------------------------------------------------------------------------- -->
+  <section id="tab-chequeo" class="tab" role="tabpanel">
+    <div class="escena pareja">
+      <div>
+        <h2 class="titulo-seccion">Chequeo de la chacra</h2>
+        <p class="ayuda">Lo que sí sabemos de este lugar. Borde sólido: dato real. Borde punteado ámbar:
+          dato de ejemplo o por validar.</p>
+        <div id="esferas" class="esferas"></div>
+      </div>
+      <div class="panel">
+        <h2>¿Qué tan sólida es esta decisión?</h2>
+        <div id="solidez"></div>
+      </div>
+    </div>
+    <div class="escena pareja">
+      <div class="panel">
+        <h2>Cargar un archivo CSV</h2>
+        <p class="ayuda">Descargue la plantilla, llénela en Excel (guardar como CSV UTF-8) y súbala. La fila
+          con fuente = EJEMPLO se ignora. Si una fila tiene un error, no se guarda nada.</p>
+        <form id="form-csv">
+          <label>Tipo de dato <select name="modelo" id="sel-modelo"></select></label>
+          <label>Archivo <input type="file" name="archivo" accept=".csv" required></label>
+          <button type="submit" class="primario">Importar</button>
+        </form>
+        <div id="msg-csv" class="mensaje" role="status"></div>
+      </div>
+      <div class="panel">
+        <h2>Parámetro validado (INIA / MIDAGRI)</h2>
+        <p class="ayuda">Reemplaza un valor de literatura por el de una ficha técnica local. Ejemplo: el
+          umbral de calor en floración del caupí según INIA.</p>
+        <form id="form-validacion">
+          <label>Cultivo <select name="cultivo" id="val-cultivo"></select></label>
+          <label>Parámetro <select name="parametro" id="val-parametro"></select></label>
+          <p id="val-actual" class="ayuda"></p>
+          <label>Valor <input name="valor" required placeholder="36 · [35, 55] · &quot;media&quot;"></label>
+          <label>Fuente <input name="fuente" required placeholder="INIA, ficha técnica 2025"></label>
+          <label>Fecha <input name="fecha" type="date" required></label>
+          <button type="submit" class="primario">Guardar validación</button>
+        </form>
+        <div id="msg-validacion" class="mensaje" role="status"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. ¿Qué sembrar? ---------------------------------------------------------------------- -->
+  <section id="tab-f2" class="tab" role="tabpanel">
+    <div class="panel">
+      <h2>¿Qué sembrar?</h2>
+      <p class="ayuda">Arrastre los cultivos a su chacra (o tóquelos) y elija la fecha de siembra.</p>
+      <div class="arrastre">
+        <div id="f2-fichas" class="fichas-cultivo" aria-label="Cultivos disponibles"></div>
+        <div id="f2-chacra" class="chacra-destino" aria-label="Cultivos a comparar en la chacra"></div>
+      </div>
+      <div class="controles">
+        <label>Fecha de siembra <input type="date" id="f2-inicio" required></label>
+        <div id="f2-opciones" class="opciones"></div>
+      </div>
+    </div>
+    <div id="f2-res" aria-live="polite"></div>
+  </section>
+
+  <!-- 4. ¿Cuándo sembrar? ------------------------------------------------------------------- -->
+  <section id="tab-f1" class="tab" role="tabpanel">
+    <div class="panel">
+      <h2>¿Cuándo sembrar?</h2>
+      <div class="controles">
+        <label>Cultivo <select id="f1-cultivo"></select></label>
+        <label>Desde <input type="date" id="f1-desde" required></label>
+        <label>Hasta <input type="date" id="f1-hasta" required></label>
+        <div id="f1-opciones" class="opciones"></div>
+      </div>
+      <button type="button" id="f1-ir" class="primario">Comparar fechas (cada 15 días)</button>
+    </div>
+    <div id="f1-res" aria-live="polite"></div>
+  </section>
+
+  <!-- 5. Secuencia de campañas -------------------------------------------------------------- -->
+  <section id="tab-secuencia" class="tab" role="tabpanel">
+    <div class="panel">
+      <h2>Secuencia de campañas</h2>
+      <p class="ayuda">Arme tres campañas seguidas. NORTEX revisa cada paso con lo sembrado antes y muestra
+        las reglas de transición que se activan.</p>
+      <div class="controles">
+        <label>Lo último que sembró aquí (opcional)
+          <select id="sec-previo"><option value="">— no sé / nada —</option></select></label>
+        <label class="check"><input type="checkbox" id="sec-renovacion"> Ya decidí renovar el huerto</label>
+      </div>
+      <div id="sec-pasos" class="sec-pasos"></div>
+      <div id="sec-opciones" class="opciones"></div>
+      <button type="button" id="sec-ir" class="primario">Revisar la secuencia</button>
+    </div>
+    <div id="sec-res" aria-live="polite"></div>
+  </section>
+</main>
+
+<footer>
+  NORTEX no da un puntaje. Muestra cuatro cosas por separado: viabilidad, riesgo, conveniencia y
+  fundamentación. Orden de los resultados: viabilidad → menos riesgos altos → menos riesgos medios →
+  menor demanda de agua. · <a href="../docs" target="_blank" rel="noopener">API</a>
+</footer>
+
+<button id="btn-demo" class="flotante" type="button" disabled>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l14 8-14 8z"/></svg>
+  Ver demostración guiada (2 min)
+</button>
+<aside id="demo" class="demo" hidden aria-label="Demostración guiada" aria-live="polite"></aside>
+<div id="proc" class="proc" role="dialog" aria-label="Procedencia del dato" hidden></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
+

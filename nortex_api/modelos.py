@@ -62,6 +62,34 @@ MODELOS: dict[str, tuple[str, str, list[tuple]]] = {
         ("estacion", "texto", True, None, None), ("fecha", "fecha", True, None, None),
         ("tmax", "num", False, -10, 50), ("tmin", "num", False, -15, 40),
         ("precip", "num", False, 0, 500), ("fuente", "texto", True, None, None)]),
+    "validacion_parametro": ("Parámetro del cultivo confirmado con una ficha local (INIA, MIDAGRI…); "
+                             "reemplaza al de literatura y pasa a VALIDADO", "declarado", [
+        ("fecha", "fecha", True, None, None), ("cultivo", "cultivo", True, None, None),
+        ("parametro", "texto", True, None, None),
+        ("valor", "texto", True, None, None),  # JSON: 36 · [35, 55] · "media"
+        ("fuente", "texto", True, None, None)]),
+}
+
+#: Modelos que solo usa la API (no tienen plantilla en nortex_data ni CSV en ``local/``).
+SOLO_API = {"estacion_senamhi", "validacion_parametro"}
+
+#: Para qué sirve cada dato local y qué pasa si falta (lo muestra ``/parcelas/{id}/faltantes``).
+IMPACTO = {
+    "pcr": ("Junta de Usuarios", "Dotación por cultivo (RT-06) y área autorizada (RT-08). Sin ella la "
+            "viabilidad es «por determinar» o provisional."),
+    "turnos": ("Junta de Usuarios", "Intervalo entre riegos: autonomía del suelo y estrés por turno."),
+    "suelo_laboratorio": ("Laboratorio (INIA, universidad)", "Agua útil del suelo, salinidad (ECe, ECw) y "
+                          "napa. Sin él se usa SoilGrids o textura por defecto: fundamentación «limitada»."),
+    "enfen": ("ENFEN (comunicado oficial)", "Confirma si El Niño Costero persiste en la campaña."),
+    "economia": ("SIEA / MIDAGRI, Agencia Agraria", "Margen bruto y margen por m³ (conveniencia)."),
+    "reservorio": ("ANA / PE Chira-Piura", "Situación del reservorio San Lorenzo y dotación análoga."),
+    "riego_parcela": ("Agricultor", "Eficiencia de riego real (si no, 0,5 por defecto)."),
+    "historial": ("Agricultor", "Reglas de transición en F2 (RT-01, RT-05)."),
+    "caudal_quiroz": ("ANA (estación Zamba)", "Recarga del sistema (informativo)."),
+    "estacion_senamhi": ("SENAMHI (solicitud formal)", "Corrige el clima con una estación del valle "
+                         "(≥ 365 días) en lugar del aeropuerto de Piura."),
+    "validacion_parametro": ("INIA / MIDAGRI", "Umbral de calor en floración, Kc del mango, ventanas de "
+                             "floración… Mientras falten, los parámetros quedan POR VALIDAR."),
 }
 
 

@@ -27,7 +27,7 @@ pip uninstall -y nortex-data
 pip install -e ".[dev]"
 ```
 
-Documentación interactiva: http://127.0.0.1:8000/docs
+Web (frontend): http://127.0.0.1:8000/app/ · Documentación interactiva: http://127.0.0.1:8000/docs
 
 Carpeta de trabajo: `NORTEX_API_DATA` (por defecto `./datos_api`, no se versiona).
 
@@ -35,14 +35,18 @@ Carpeta de trabajo: `NORTEX_API_DATA` (por defecto `./datos_api`, no se versiona
 
 | Método | Ruta | Para qué |
 | :-- | :-- | :-- |
+| GET | `/app/` | **Frontend web**: portal, F2, F1, secuencia de campañas y vista orbital de la parcela |
 | GET | `/salud` | Estado del servicio |
 | GET | `/catalogo/cultivos` | 5 cultivos con parámetros, fuente y estado de validación |
 | GET | `/modelos` | Modelos de datos locales (columnas, tipos, rangos) para armar formularios |
 | GET / POST | `/datos/{modelo}` | Listar o agregar una fila validada |
 | DELETE | `/datos/{modelo}/{id}` | Borrar una fila |
 | POST | `/importar/{modelo}` | Carga masiva desde CSV (todo o nada; ignora filas `EJEMPLO`) |
+| GET | `/plantillas/{modelo}.csv` | Plantilla CSV para llenar en Excel |
 | POST / GET | `/parcelas` | Registrar (GeoJSON Point o Polygon) y listar parcelas |
-| POST | `/parcelas/{aoi_id}/actualizar` | Descargar las fuentes por API para la parcela |
+| POST | `/parcelas/{aoi_id}/actualizar` | Descargar las fuentes (`?segundo_plano=true` responde al instante) |
+| GET | `/tareas/{id}` | Estado de una descarga en segundo plano |
+| GET | `/parcelas/{aoi_id}/faltantes` | Qué datos faltan o son de ejemplo, de dónde salen y qué cambian |
 | GET | `/parcelas/{aoi_id}/fuentes` | Estado y rango de cada fuente descargada |
 | GET | `/parcelas/{aoi_id}/serie/{fuente}` | Serie de una fuente (para gráficos) |
 | POST | `/evaluar/f1` | ¿Cuándo sembrar? Ventanas de un cultivo |
@@ -62,6 +66,20 @@ Carpeta de trabajo: `NORTEX_API_DATA` (por defecto `./datos_api`, no se versiona
 | `suelo_laboratorio` | Laboratorio | Agua del suelo y salinidad (prioridad sobre SoilGrids) |
 | `riego_parcela` | Agricultor | Eficiencia de riego |
 | `historial` | Agricultor | Transición (F2) |
+| `validacion_parametro` | INIA / MIDAGRI | Reemplaza un parámetro de literatura (p. ej. `calor_floracion_c`) y lo marca VALIDADO |
+
+### Datos de ejemplo y viabilidad provisional
+
+Las filas cuya fuente o comisión dice «ejemplo» se aceptan, pero el motor las marca: cada
+decisión trae `viabilidad.definitiva` (falso si la dotación o los turnos son de ejemplo, ingresados
+a mano o estimados) y `viabilidad.pendiente` (qué falta). La fundamentación de la dotación y los
+turnos de ejemplo es «débil».
+
+### Calor en floración
+
+El umbral (35 °C, literatura) es POR VALIDAR. Cada decisión trae `extremos.sensibilidad_calor`
+(nivel con −1 a +3 °C) y `extremos.tmax_floracion`. Con la opción `umbral_calor_c` se prueba otro
+umbral en una consulta; con `POST /datos/validacion_parametro` se fija el de INIA para todas.
 
 ## Riesgo climático y reglas de transición
 
@@ -111,8 +129,26 @@ fundamentación), los escenarios, el hindcast, la procedencia de cada insumo y l
 Cada fuente tiene un límite de tiempo (`LIMITE_SEGUNDOS`) y todas corren en paralelo; si una no
 responde se conserva la serie anterior y se informa en la respuesta.
 
+## Despliegue
+
+`Dockerfile` (API + frontend) y `render.yaml` (Render, con disco persistente en `/datos`):
+
+```bash
+docker build -t nortex-api .
+docker run -p 8000:8000 -v nortex_datos:/datos nortex-api     # http://localhost:8000/app/
+```
+
+Variables: `NORTEX_API_DATA` (carpeta de datos), `NORTEX_CORS` (orígenes permitidos, por defecto
+`*`), `EARTHDATA_TOKEN` (opcional, IMERG). Si el frontend se publica aparte, abrirlo con
+`?api=https://su-servidor` (se recuerda en el navegador).
+
 ## Pendiente
 
-- La descarga inicial de POWER histórico es lenta: ejecutarla en segundo plano y avisar al frontend.
 - Autenticación de usuarios (cada agricultor ve sus parcelas).
 - Migrar SQLite a PostgreSQL/PostGIS al pasar a producción.
+
+### El pulso de la chacra
+
+Frontend inmersivo «La chacra viva» (portal, vuelo orbital, laboratorio F2, línea del tiempo F1, secuencia de 3 campañas y demostración guiada) conectado a la API. Flujo, matriz visual → API, límites y verificación: [FRONTEND_CHACRA_VIVA.md](FRONTEND_CHACRA_VIVA.md).
+
+Pruebas de visuales (solo desarrollo; Node no se usa en despliegue): `node tests/web_visuals.mjs`.

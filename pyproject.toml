@@ -30,6 +30,9 @@ dev = ["pytest>=8", "ruff>=0.5", "httpx>=0.27"]
 [tool.setuptools]
 packages = ["nortex_api"]
 
+[tool.setuptools.package-data]
+nortex_api = ["web/*", "web/visuales/*.js", "web/escenas/*.js"]   # frontend servido en /app, con sus módulos
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FAFBF3">
+  <meta name="description" content="NORTEX: qué y cuándo sembrar en el valle de San Lorenzo (Tambogrande, Piura) con historia satelital de la NASA.">
+  <title>NORTEX — La chacra viva · San Lorenzo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body data-escena="portal">
+<a class="saltar" href="#escenario">Saltar al contenido</a>
+
+<!-- CAPA 0 · Atmósfera: cielo y polvo en Canvas 2D (visuales/ambiente.js). Decorativa. -->
+<canvas id="ambiente" aria-hidden="true"></canvas>
+
+<!-- CAPA 1 · Horizonte agrícola de San Lorenzo (SVG, decorativo) -->
+<svg id="horizonte" viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+  <defs>
+    <linearGradient id="hz-lejos" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C5DCB0"/><stop offset="1" stop-color="#9CC082"/></linearGradient>
+    <linearGradient id="hz-cerca" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D9E8BE"/><stop offset="1" stop-color="#FAFBF3"/></linearGradient>
+  </defs>
+  <path class="hz-cerro" d="M0 210 Q120 150 260 190 T520 170 Q660 120 800 180 T1080 160 Q1260 120 1440 190 V420 H0Z" fill="url(#hz-lejos)" opacity=".85"/>
+  <path d="M0 250 Q200 215 420 240 T860 232 Q1100 210 1440 246 V420 H0Z" fill="#B5D39C"/>
+  <!-- Algarrobos: copa ancha y plana -->
+  <g class="hz-arbol" fill="#2A5A3B">
+    <path d="M170 246c-46-4-58-34-22-44 10-22 62-26 78-4 40 2 44 40 4 46z"/><rect x="186" y="240" width="6" height="26"/>
+    <path d="M1110 238c-56-4-70-40-28-52 14-26 76-30 94-4 48 2 52 46 6 54z"/><rect x="1136" y="232" width="7" height="30"/>
+    <path d="M640 236c-30-2-38-22-14-28 6-14 40-16 50-2 26 2 28 26 2 30z"/><rect x="650" y="232" width="4" height="18"/>
+  </g>
+  <path d="M0 262 Q360 240 720 256 T1440 262 V420 H0Z" fill="url(#hz-cerca)"/>
+  <!-- Surcos en perspectiva hacia el punto de fuga -->
+  <g class="hz-surcos" stroke="#A3BE88" stroke-width="2" fill="none" opacity=".65">
+    <path d="M720 258 L-200 420"/><path d="M720 258 L120 420"/><path d="M720 258 L420 420"/><path d="M720 258 L640 420"/>
+    <path d="M720 258 L800 420"/><path d="M720 258 L1020 420"/><path d="M720 258 L1320 420"/><path d="M720 258 L1640 420"/>
+  </g>
+</svg>
+
+<!-- CAPA 2 · Barra de mando -->
+<header class="hud">
+  <button class="marca" data-ir="portal" type="button" aria-label="NORTEX: volver al inicio">
+    <svg class="pulso" viewBox="0 0 64 24" aria-hidden="true"><path d="M1 13h14l4-9 6 17 5-12 3 4h30"/></svg>
+    <span><strong>NORTEX</strong><small>San Lorenzo · Tambogrande</small></span>
+  </button>
+  <nav class="hud-nav" aria-label="Escenas">
+    <button type="button" data-ir="laboratorio">¿Qué siembro?</button>
+    <button type="button" data-ir="tiempo">¿Cuándo?</button>
+    <button type="button" data-ir="secuencia">3 campañas</button>
+    <button type="button" data-ir="orbita">Mi parcela</button>
+  </nav>
+  <div class="hud-util">
+    <span id="estado-api" class="estado-api" role="status">conectando…</span>
+    <button id="btn-sonido" class="icono" type="button" aria-pressed="false" title="Ambiente sonoro (viento suave)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9zM16 8.5a5 5 0 010 7M18.5 6a8.500 8.500 0 010 12"/></svg>
+      <span class="oculto">Ambiente sonoro</span>
+    </button>
+    <button id="btn-ajustes" class="icono" type="button" aria-expanded="false" aria-controls="ajustes" title="Ajustes de la consulta">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></svg>
+      <span class="oculto">Ajustes de la consulta</span>
+    </button>
+  </div>
+</header>
+
+<main id="escenario">
+  <!-- 1 · PORTAL DE LA CHACRA ============================================================== -->
+  <section id="esc-portal" class="escena activa" aria-labelledby="portal-titulo">
+    <div class="portal">
+      <p class="eyebrow">NASA Space Apps 2026 · Field Shift</p>
+      <h1 id="portal-titulo">Tu chacra está viva.<br><em>Pregúntale.</em></h1>
+      <p class="portal-sub">Más de 30 años de historia satelital de este valle, convertidos en una respuesta que se
+        puede ver. Frecuencia histórica, no pronóstico.</p>
+      <div class="puertas">
+        <button class="puerta puerta-que" type="button" data-puerta="laboratorio">
+          <span class="puerta-brillo" aria-hidden="true"></span>
+          <svg viewBox="0 0 80 80" aria-hidden="true"><path d="M40 74V40"/><path d="M40 46C18 46 12 28 14 16c16 0 28 8 26 30z"/><path d="M40 38c0-18 12-26 26-26 2 14-6 28-26 26z"/></svg>
+          <span class="puerta-txt"><b>¿Qué siembro?</b><small>Explorador bioclimático · 5 cultivos del valle</small></span>
+        </button>
+        <button class="puerta puerta-cuando" type="button" data-puerta="tiempo">
+          <span class="puerta-brillo" aria-hidden="true"></span>
+          <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="14"/><path d="M40 8v10M40 62v10M8 40h10M62 40h10M17 17l7 7M56 56l7 7M63 17l-7 7M24 56l-7 7"/></svg>
+          <span class="puerta-txt"><b>¿Cuándo siembro?</b><small>Calendario de siembra · 12 meses</small></span>
+        </button>
+      </div>
+      <div class="portal-menor">
+        <button type="button" class="enlace" data-ir="secuencia">Armar 3 campañas seguidas</button>
+        <button type="button" class="enlace" data-ir="orbita">Ver mi parcela desde el espacio</button>
+      </div>
+      <p id="portal-chacra" class="portal-chacra" role="status"></p>
+    </div>
+  </section>
+
+  <!-- 2 · LABORATORIO DE CULTIVOS (F2) ====================================================== -->
+  <section id="esc-laboratorio" class="escena" aria-labelledby="lab-titulo" hidden>
+    <div class="esc-cab">
+      <p class="eyebrow">F2 · Laboratorio de cultivos</p>
+      <h2 id="lab-titulo">¿Qué siembro?</h2>
+      <p class="ayuda" id="lab-contexto"></p>
+    </div>
+    <div id="baraja" class="baraja" role="listbox" aria-label="Cultivos del valle, en el orden de la API" tabindex="0"></div>
+    <p class="baraja-pista ayuda">Desliza, usa las flechas o toca una carta: el suelo y el cielo cambian con el cultivo.</p>
+    <div id="lab-autopsia" aria-live="polite"></div>
+  </section>
+
+  <!-- 3 · CALENDARIO DE SIEMBRA (F1) ======================================================== -->
+  <section id="esc-tiempo" class="escena" aria-labelledby="tiempo-titulo" hidden>
+    <div class="esc-cab">
+      <p class="eyebrow">F1 · Calendario de siembra</p>
+      <h2 id="tiempo-titulo">¿Cuándo siembro?</h2>
+      <div id="tiempo-cultivos" class="fichas" role="radiogroup" aria-label="Cultivo"></div>
+    </div>
+    <div id="arco" class="arco"></div>
+    <div id="calendario" class="calendario" role="radiogroup" aria-label="Fecha de siembra (12 meses)"></div>
+    <div class="cal-leyenda" aria-label="Leyenda del calendario">
+      <span><i class="fila-viab" aria-hidden="true"></i> Viabilidad (borde punteado = provisional)</span>
+      <span><b class="fila-riesgos" aria-hidden="true"><i></i><i></i></b> Riesgos altos (un punto por riesgo)</span>
+      <span><b class="fila-calor" aria-hidden="true"><i style="--k:var(--ambar)"></i></b> Calor en floración (Tmax media histórica)</span>
+    </div>
+    <div id="tiempo-lectura" class="tiempo-lectura" aria-live="polite"></div>
+    <div id="tiempo-autopsia"></div>
+  </section>
+
+  <!-- 4 · SECUENCIA DE 3 CAMPAÑAS =========================================================== -->
+  <section id="esc-secuencia" class="escena" aria-labelledby="sec-titulo" hidden>
+    <div class="esc-cab">
+      <p class="eyebrow">Transición · reglas RT-01 a RT-05</p>
+      <h2 id="sec-titulo">Tres campañas que encajan</h2>
+      <p class="ayuda">Elige el cultivo y la fecha de cada ficha. Al encastrarlas, NORTEX evalúa cada campaña con lo
+        sembrado antes; las reglas de transición se encienden en las uniones.</p>
+    </div>
+    <div id="rompecabezas" class="rompecabezas"></div>
+    <div class="sec-controles">
+      <label class="check"><input type="checkbox" id="sec-renovacion"> Ya decidí renovar el huerto (RT-01)</label>
+      <button type="button" id="sec-ir" class="primario grande">Encastrar y revisar</button>
+    </div>
+    <div id="sec-estado" class="mensaje" role="status"></div>
+    <div id="sec-autopsia"></div>
+  </section>
+
+  <!-- 5 · VUELO ORBITAL · MI PARCELA ======================================================== -->
+  <section id="esc-orbita" class="escena esc-orbita" aria-labelledby="orbita-titulo" hidden>
+    <div class="orbita-vista">
+      <div class="estrellas" aria-hidden="true"></div>
+      <div id="globo" class="globo"><div id="mapa" aria-label="Imagen satelital de San Lorenzo"></div></div>
+      <!-- Haces de los satélites: se dibujan con el estado real de GET /parcelas/{id}/fuentes -->
+      <svg id="haces" class="haces" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <ul id="satelites" class="satelites" aria-label="Fuentes satelitales de la parcela"></ul>
+      <p id="vuelo-texto" class="vuelo-texto" role="status"></p>
+      <button id="vuelo-saltar" class="enlace vuelo-saltar" type="button" hidden>Saltar el vuelo</button>
+    </div>
+    <div class="orbita-panel" id="orbita-panel">
+      <p class="eyebrow">Mi parcela</p>
+      <h2 id="orbita-titulo">Desde la órbita hasta tu chacra</h2>
+      <div id="parcela-info"></div>
+      <div class="fila-botones">
+        <button id="btn-revolar" type="button">Repetir el vuelo</button>
+        <button id="btn-descargar" class="primario" type="button">Traer datos de la NASA</button>
+      </div>
+      <div id="progreso" class="mensaje" role="status"></div>
+      <ul id="senales" class="senales" aria-label="Todas las fuentes de datos"></ul>
+
+      <details class="bloque" open>
+        <summary>El archivo del clima</summary>
+        <div id="clima-cuerpo"></div>
+      </details>
+      <details class="bloque" open>
+        <summary>¿Qué tan sólida es la decisión?</summary>
+        <div id="solidez"></div>
+      </details>
+      <details class="bloque" id="det-registro">
+        <summary>Registrar una chacra nueva</summary>
+        <form id="form-parcela">
+          <p class="ayuda">Con este panel abierto, toca el mapa para marcar las esquinas (o un solo punto).</p>
+          <label>Nombre <input name="nombre" required placeholder="Chacra de Juan, lote 3"></label>
+          <label>Identificador <input name="aoi_id" required pattern="[a-z0-9_]{3,40}" placeholder="chacra_juan_3"
+                 title="minúsculas, números y _ (3 a 40)"></label>
+          <p id="info-poligono" class="ayuda">0 puntos marcados.</p>
+          <div class="fila-botones">
+            <button type="button" id="btn-deshacer">Deshacer punto</button>
+            <button type="button" id="btn-limpiar">Borrar contorno</button>
+          </div>
+          <label>o pega coordenadas (latitud, longitud por línea)
+            <textarea id="coords" rows="3" placeholder="-4.9921, -80.3127"></textarea></label>
+          <div class="fila-botones">
+            <button type="button" id="btn-coords">Usar coordenadas</button>
+            <button type="submit" class="primario">Guardar chacra</button>
+          </div>
+        </form>
+        <div id="msg-parcela" class="mensaje" role="status"></div>
+      </details>
+      <details class="bloque">
+        <summary>Cargar datos de la Junta, laboratorio o SIEA (CSV)</summary>
+        <p class="ayuda">Descarga la plantilla, llénala en Excel (CSV UTF-8) y súbela. La fila con fuente = EJEMPLO se
+          ignora. Si una fila tiene un error, no se guarda nada.</p>
+        <form id="form-csv">
+          <label>Tipo de dato <select name="modelo" id="sel-modelo"></select></label>
+          <label>Archivo <input type="file" name="archivo" accept=".csv" required></label>
+          <button type="submit" class="primario">Importar</button>
+        </form>
+        <div id="msg-csv" class="mensaje" role="status"></div>
+      </details>
+      <details class="bloque">
+        <summary>Parámetro validado (INIA / MIDAGRI)</summary>
+        <p class="ayuda">Reemplaza un valor de literatura por el de una ficha técnica local, por ejemplo el umbral de
+          calor en floración del caupí.</p>
+        <form id="form-validacion">
+          <label>Cultivo <select name="cultivo" id="val-cultivo"></select></label>
+          <label>Parámetro <select name="parametro" id="val-parametro"></select></label>
+          <p id="val-actual" class="ayuda"></p>
+          <label>Valor <input name="valor" required placeholder="36 · [35, 55] · &quot;media&quot;"></label>
+          <label>Fuente <input name="fuente" required placeholder="INIA, ficha técnica 2025"></label>
+          <label>Fecha <input name="fecha" type="date" required></label>
+          <button type="submit" class="primario">Guardar validación</button>
+        </form>
+        <div id="msg-validacion" class="mensaje" role="status"></div>
+      </details>
+    </div>
+  </section>
+</main>
+
+<!-- Ajustes de la consulta: valen para todas las escenas y viajan tal cual a /evaluar/f1 y /evaluar/f2 -->
+<aside id="ajustes" class="ajustes" aria-label="Ajustes de la consulta" hidden>
+  <div class="ajustes-cab"><h3>Ajustes de la consulta</h3>
+    <button type="button" class="icono" id="ajustes-cerrar" aria-label="Cerrar ajustes">×</button></div>
+  <form id="form-ajustes">
+    <label>Chacra <select id="sel-parcela" name="parcela"></select></label>
+    <label>Fecha de siembra (¿Qué siembro?) <input type="date" id="aj-inicio" name="inicio" required></label>
+    <label>Riego
+      <select name="eficiencia">
+        <option value="">Según los datos de la parcela</option>
+        <option value="0.5">Gravedad · eficiencia 0,5</option>
+        <option value="0.9">Goteo · eficiencia 0,9</option>
+      </select></label>
+    <label>Historia climática
+      <select name="condicion_enso">
+        <option value="">Todos los años disponibles</option>
+        <option value="nino">Solo años El Niño</option>
+        <option value="neutro">Solo años neutros</option>
+        <option value="nina">Solo años La Niña</option>
+      </select></label>
+    <label>Umbral de calor en floración (°C)
+      <input name="umbral_calor_c" type="number" min="25" max="45" step="0.5" placeholder="Según ficha · por validar con INIA"></label>
+    <label>Dotación (m³/ha) <input name="dotacion_m3_ha" type="number" min="0" max="40000" placeholder="Usar el PCR"></label>
+    <label>Turno de riego (días) <input name="intervalo_dias" type="number" min="1" max="60" placeholder="Usar los turnos declarados"></label>
+    <label>Área (ha) <input name="area_ha" type="number" min="0.01" step="0.01" placeholder="Usar la parcela"></label>
+    <p class="ayuda">Lo que escribas aquí se envía a la API como supuesto de esta consulta; el motor lo marca como
+      provisional. Deja un campo vacío para usar el dato de la parcela.</p>
+    <button type="reset" class="enlace">Volver a los datos de la parcela</button>
+  </form>
+  <p class="ayuda pie-reglas">NORTEX no da un puntaje. Muestra cuatro cosas por separado: viabilidad, riesgo,
+    conveniencia y fundamentación. · <a href="../docs" target="_blank" rel="noopener">API</a></p>
+</aside>
+
+<!-- Modo demostración para el jurado (demo.js) -->
+<button id="btn-demo" class="flotante" type="button" disabled>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>
+  <span>Demostración · 2 min</span>
+</button>
+<aside id="demo" class="demo" hidden aria-label="Demostración guiada" aria-live="polite"></aside>
+<div id="proc" class="proc" role="dialog" aria-label="Procedencia del dato" hidden></div>
+<div id="velo" class="velo" aria-hidden="true"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
