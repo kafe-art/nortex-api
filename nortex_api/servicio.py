@@ -272,7 +272,8 @@ def _decision_web(decision) -> dict:
         for nombre, valor, unidad, origen in campos
     }
     salida["insumos_efectivos"]["area_ha"] = {
-        "valor": getattr(ev, "area_ha", 1.0), "unidad": "ha", "fuente": "área de la parcela (catastro de la API)",
+        "valor": getattr(ev, "area_ha", 1.0), "unidad": "ha",
+        "fuente": "área de la parcela (catastro de la API)",
         "categoria": "declarado",
         "nota": "Convierte la lámina de agua (mm) en volumen (m³). Si el catastro no la trae, se asume 1 ha.",
     }
