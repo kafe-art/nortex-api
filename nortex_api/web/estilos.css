@@ -56,7 +56,7 @@ button:disabled { opacity: .5; cursor: wait; }
 
 /* 2 · Atmósfera ------------------------------------------------------------------------------------ */
 #ambiente { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -3; }
-#horizonte { position: fixed; left: 0; bottom: 0; width: 100%; height: min(42vh, 400px); z-index: -2; pointer-events: none; transition: transform 1.2s var(--suavizado), opacity 1s; }
+#horizonte { position: fixed; left: 0; bottom: 0; width: 100%; height: min(56vh, 520px); z-index: -2; pointer-events: none; transition: transform 1.2s var(--suavizado), opacity 1s; }
 body:not([data-escena=portal]) #horizonte { opacity: 0; transform: translateY(30%); }
 .hz-arbol { animation: mecer 7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
 /* Fuera del portal el cielo solo asoma arriba; el resto de la página es papel limpio. */
@@ -147,9 +147,16 @@ details > summary::-webkit-details-marker { display: none; }
   .portal-insignias { border-radius: 24px; padding: .75rem 1rem; gap: .6rem 1rem; }
   .insignia-sep { display: none; }
 }
-.portal h1 { font-family: var(--fuente-editorial); font-size: clamp(2.15rem, 1.15rem + 3.9vw, 4.15rem); font-weight: 600; line-height: 1.06; text-wrap: balance; letter-spacing: -.025em; }
-.portal h1 em { font-family: var(--fuente-editorial); font-style: italic; font-weight: 400; color: var(--t-verde); background: linear-gradient(transparent 68%, var(--lima) 68%); padding: 0 .12em; }
-.portal-sub { font-size: clamp(1rem, .88rem + .55vw, 1.18rem); max-width: 44rem; margin: 1.35rem auto 2.5rem; color: var(--suave); text-wrap: pretty; }
+.portal h1 { font-family: var(--fuente-editorial); font-size: clamp(2.15rem, 1.15rem + 3.9vw, 4.15rem); font-weight: 600; line-height: 1.08; text-wrap: balance; letter-spacing: -.025em;
+  display: grid; gap: .18em; justify-items: center; text-shadow: 0 2px 24px rgba(255, 255, 255, .85); }
+.titulo-principal { display: block; color: var(--tinta); }
+.portal h1 em, .titulo-destacado { font-family: var(--fuente-editorial); font-style: italic; font-weight: 400; display: block; padding: 0 .08em;
+  color: #1B6336; background: linear-gradient(135deg, #124D29 0%, #24753E 52%, #8A6812 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.titulo-ornamento { display: flex; align-items: center; justify-content: center; gap: .65rem; margin: 1.1rem auto .2rem; }
+.titulo-ornamento span { width: 54px; height: 1.5px; background: linear-gradient(90deg, transparent, rgba(18, 48, 31, .32), transparent); }
+.titulo-ornamento i { width: 9px; height: 9px; border-radius: 2px; transform: rotate(45deg); background: #D9A426; box-shadow: 0 0 0 3px rgba(217, 164, 38, .22); }
+.portal-sub { font-size: clamp(1.02rem, .9rem + .55vw, 1.2rem); max-width: 44rem; margin: .9rem auto 2.4rem; padding: .55rem 1.2rem; border-radius: 20px;
+  background: rgba(255, 255, 255, .58); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #243D2E; font-weight: 500; text-wrap: pretty; }
 .puertas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.4rem; perspective: 1100px; }
 .puerta { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; position: relative; overflow: hidden; display: grid; justify-items: center; gap: 1rem; padding: 2.2rem 1.6rem 2rem;
   border-radius: 32px; border: 1px solid var(--linea); background: var(--papel); min-height: 240px; text-align: center; box-shadow: var(--sombra);

@@ -10,10 +10,10 @@
 import { reducido, mezclar, limitar } from "../util.js";
 
 const CIELOS = {
-  // [cenit, medio, horizonte] en RGB (tonos claros diurnos; órbita conserva el cielo espacial)
-  fresco: [[198, 229, 242], [229, 243, 236], [250, 251, 243]],
-  templado: [[217, 238, 198], [244, 247, 218], [250, 251, 243]],
-  caluroso: [[246, 224, 182], [252, 238, 206], [250, 251, 243]],
+  // [cenit, medio, horizonte] en RGB (cielo luminoso del valle de San Lorenzo; órbita conserva el espacio)
+  fresco: [[176, 222, 245], [218, 241, 228], [248, 249, 232]],
+  templado: [[190, 229, 238], [233, 244, 206], [252, 245, 208]],
+  caluroso: [[228, 218, 186], [248, 234, 192], [252, 243, 212]],
   orbita: [[8, 12, 20], [12, 18, 28], [16, 24, 38]],
 };
 
@@ -59,14 +59,27 @@ export function crearAmbiente(canvas) {
         ctx.beginPath(); ctx.arc(s.x * w, s.y * h, s.r, 0, 7); ctx.fill();
       }
     }
-    if (orbitaAct < 0.98) {                                   // resplandor del sol sobre el horizonte
-      const cx = w * 0.72, cy = h * 0.42, r = Math.max(w, h) * 0.55;
+    if (orbitaAct < 0.98) {                                   // resplandor solar y rayos suaves sobre el valle
+      const cx = w * 0.76, cy = h * 0.34, r = Math.max(w, h) * 0.62;
       const sol = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      const fuerza = (1 - orbitaAct) * (sinDato ? 0.16 : 0.22 + calorAct * 0.28);
-      sol.addColorStop(0, `rgba(255,${Math.round(220 - calorAct * 55)},${Math.round(90 - calorAct * 50)},${fuerza})`);
+      const fuerza = (1 - orbitaAct) * (sinDato ? 0.22 : 0.28 + calorAct * 0.26);
+      sol.addColorStop(0, `rgba(255,${Math.round(232 - calorAct * 45)},${Math.round(140 - calorAct * 60)},${fuerza})`);
+      sol.addColorStop(0.5, `rgba(255,220,120,${fuerza * 0.35})`);
       sol.addColorStop(1, "rgba(255,200,80,0)");
       ctx.globalAlpha = 1; ctx.fillStyle = sol; ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = "#8C9E5E";                              // polen / brisa suave en el valle
+
+      // Nubes suaves de valle en la franja superior
+      ctx.fillStyle = "rgba(255, 255, 255, 0.42)";
+      for (let i = 0; i < 4; i++) {
+        const nx = ((w * (0.18 + i * 0.24) + t * (4 + i * 1.2)) % (w + 320)) - 160;
+        const ny = h * (0.11 + (i % 2) * 0.07);
+        ctx.beginPath();
+        ctx.ellipse(nx, ny, 95 + i * 18, 22 + (i % 2) * 6, 0, 0, 7);
+        ctx.ellipse(nx + 42, ny - 6, 65, 18, 0, 0, 7);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = "#7B964A";                              // polen / brisa suave en el valle
       for (const p of polvo) {
         p.x += p.vx * dt; p.y += (p.vy + Math.sin(t * 0.9 + p.f) * 6) * dt;
         if (p.x > w + 10) Object.assign(p, nueva(false));

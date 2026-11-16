@@ -33,15 +33,33 @@ export function tono(t) {
   if (/con restricciones|medio|media|ejemplo|aproximado|provisional|por validar|condicionante/.test(s)) return "ambar";
   if (/no viable|alto|falta|limitada|débil|error|agotado/.test(s)) return "rojo";
   if (/por determinar|sin |—/.test(s) || !s) return "gris";
-  if (/informativa|info/.test(s)) return "azul";
+  if (/informativa|info|modelad|estimad|derivad|simulad/.test(s)) return "azul";
   if (/viable|bajo|ok|alta|buena|validado|terminad/.test(s)) return "verde";
   return "gris";
 }
 export const etq = (t, c) => `<span class="etq ${c ?? tono(t)}">${esc(t)}</span>`;
 
-/** ¿El dato es real, de ejemplo o por validar? Se deduce del texto de la fuente que da la API. */
-export function estadoDato(fuente) {
-  const s = String(fuente ?? "");
+/** Naturaleza del dato que declara el motor (`categoria`), traducida a estado de la interfaz. */
+const NATURALEZA = {
+  medido: "real", observado: "real", calculado: "real",
+  simulado: "modelado", modelado: "modelado", derivado: "modelado", estimado: "modelado",
+  reanalisis: "modelado", "reanálisis": "modelado", regional: "modelado",
+  declarado: "por validar", supuesto: "por validar", provisional: "por validar",
+  ejemplo: "ejemplo",
+};
+export const ESTADOS = { ejemplo: "dato de ejemplo", modelado: "dato modelado", "por validar": "por validar",
+  "por determinar": "por determinar", real: "dato real" };
+
+/** ¿El dato es medido, modelado, de ejemplo o está por validar?
+ *  Manda lo que declara el motor (`estado`, `definitiva`, `categoria`); el texto de la fuente es
+ *  solo el último recurso, para cifras que llegan sin metadatos. */
+export function estadoDato(info) {
+  const i = typeof info === "string" ? { fuente: info } : (info ?? {});
+  if (i.estado) return i.estado;
+  if (i.definitiva === false) return "por validar";
+  const cat = String(i.categoria ?? "").toLowerCase().trim();
+  if (NATURALEZA[cat]) return NATURALEZA[cat];
+  const s = String(i.fuente ?? "");
   if (!s || /sin fuente|por determinar/i.test(s)) return "por determinar";
   if (/ejemplo/i.test(s)) return "ejemplo";
   if (/POR[_ ]VALIDAR|POR VERIFICAR|por defecto|ingresad[oa]|^parámetro$/i.test(s)) return "por validar";
@@ -50,7 +68,7 @@ export function estadoDato(fuente) {
 
 /** Cifra con su procedencia a un toque. `info`: {titulo, fuente, categoria, nota, estado}. */
 export function dato(texto, info = {}) {
-  const estado = info.estado ?? estadoDato(info.fuente);
+  const estado = estadoDato(info);
   const cls = estado === "real" ? "" : " dato-debil";
   return `<button type="button" class="dato${cls}" data-proc="${esc(JSON.stringify({ ...info, estado, valor: texto }))}"
     aria-label="${esc(`${info.titulo ?? "Dato"}: ${texto}. Ver de dónde sale`)}">${esc(texto)}</button>`;
@@ -77,8 +95,9 @@ document.addEventListener("click", (ev) => {
   if (!b) { if (!ev.target.closest?.("#proc")) cerrarProc(); return; }
   let i; try { i = JSON.parse(b.dataset.proc); } catch { return; }
   ancla = b;
-  const estado = i.estado && i.estado !== "real" ? etq(i.estado === "ejemplo" ? "dato de ejemplo" : i.estado,
-    i.estado === "por determinar" ? "gris" : "ambar") : etq("dato real o calculado", "verde");
+  const nombre = ESTADOS[i.estado] ?? "dato real";
+  const clase = { "por determinar": "gris", modelado: "azul", ejemplo: "ambar", "por validar": "ambar" }[i.estado] ?? "verde";
+  const estado = etq(nombre, clase);
   p.innerHTML = `<button type="button" class="cerrar" aria-label="Cerrar">×</button>
     <h3>${esc(i.titulo ?? "Dato")}</h3><p class="proc-valor">${esc(i.valor)}</p>
     <p>${estado}${i.categoria ? ` ${etq(i.categoria, "azul")}` : ""}</p>

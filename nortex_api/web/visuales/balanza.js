@@ -13,7 +13,7 @@ const plato = (x, clase, etiqueta) => `<g class="plato ${clase}">
   <path d="M${x - 34} 0l34 -46 34 46" class="cuerda"/><path d="M${x - 40} 0h80a40 16 0 01-80 0z" class="cuenco"/>
   <text x="${x}" y="34" class="plato-txt">${etiqueta}</text></g>`;
 
-export function balanza({ conveniencia, escenario = "deficit_medio", costo } = {}) {
+export function balanza({ conveniencia, escenario = "deficit_medio", costo, dotacion } = {}) {
   const c = conveniencia || {};
   const margen = c.margen_soles_ha?.[escenario];
   const calculado = c.estado === "calculado" && margen != null;
@@ -22,7 +22,9 @@ export function balanza({ conveniencia, escenario = "deficit_medio", costo } = {
   const angulo = calculado && costoV > 0 ? limitar((margen - costoV) / (Math.abs(margen) + costoV), -1, 1) * 14
     : calculado ? Math.sign(margen) * 8 : 0;
   const agua = c.agua_m3_ha == null ? "" : `<span>Agua de la campaña: ${dato(`${num(c.agua_m3_ha)} m³/ha`, {
-    titulo: "Agua usada (déficit medio)", fuente: "riego bruto o demanda bruta del balance FAO-56", categoria: "simulado" })}</span>`;
+    titulo: "Agua usada (déficit medio)", fuente: dotacion?.fuente ?? "riego bruto o demanda bruta del balance FAO-56",
+    categoria: dotacion?.categoria ?? "simulado",
+    nota: dotacion?.nota ?? "Volumen de la campaña según la dotación usada en la evaluación." })}</span>`;
 
   const svg = `<svg viewBox="0 0 240 150" role="img" aria-label="${calculado
     ? `Margen proyectado ${num(margen)} soles por hectárea` : "Conveniencia por determinar: falta la plantilla económica"}">

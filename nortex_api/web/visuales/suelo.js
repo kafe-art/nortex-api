@@ -18,7 +18,7 @@
  * El ciclo compara dos duraciones que entrega el motor; no es una simulación diaria en el navegador.
  * El vapor es decorativo. Se pausa fuera de pantalla y respeta «reducir movimiento». */
 
-import { esc, num, pct, dato, datoRes, azar, limitar, mezclar, mezclarColor, reducido } from "../util.js";
+import { esc, num, pct, dato, datoRes, etq, azar, limitar, mezclar, mezclarColor, reducido } from "../util.js";
 
 const PROF_MAX = 1.5;      // metros representados en el corte
 const DURACION = 9;        // segundos que dura un turno de riego en pantalla
@@ -46,7 +46,8 @@ export function modeloSuelo({ res = {}, zr, intervalo, exceso, clima, tipo, cult
   };
 }
 
-export function leyendaSuelo(m, { res = {}, intervalo, zr } = {}) {
+export function leyendaSuelo(m, { res = {}, intervalo, zr, extremos } = {}) {
+  const ex = extremos || {};
   const titular = !m.conCiclo ? (m.sinDatos ? "Sin información de estrés hídrico" : "Turnos de riego por determinar")
     : m.marchita ? `El suelo aguanta ${num(m.autonomia, 1)} días y el agua llega cada ${num(m.turno)}: la raíz pasa sed`
       : `El suelo aguanta ${num(m.autonomia, 1)} días y el agua llega cada ${num(m.turno)}: alcanza entre turnos`;
@@ -71,6 +72,30 @@ export function leyendaSuelo(m, { res = {}, intervalo, zr } = {}) {
           : dato(`${num(m.zr, 1)} m`, infoZr)}</li>
       </ul>
     </details>
+    ${ex.anios ? `<details class="suelo-mas">
+      <summary>Lluvia extrema y anegamiento (${esc(ex.fuente_lluvia || "fuente no declarada")})</summary>
+      <ul class="suelo-fichas">
+        <li><small>Años con aguacero extremo</small>${dato(`${num(ex.anios_exceso)} de ${num(ex.anios)}`, {
+          titulo: "Años con lluvia extrema en 5 días", fuente: ex.fuente_lluvia || "clima histórico",
+          nota: "Cuenta años del registro histórico; no es un pronóstico.", categoria: "observado" })}</li>
+        <li><small>Frecuencia histórica</small>${dato(pct(ex.frecuencia_exceso), {
+          titulo: "Frecuencia de exceso", fuente: ex.fuente_lluvia || "clima histórico",
+          nota: `${num(ex.anios_exceso)} de ${num(ex.anios)} años superaron el umbral.`, categoria: "observado" })}</li>
+        <li><small>Umbral (5 días)</small>${dato(`${num(ex.umbral_rx5day_mm)} mm`, {
+          titulo: "Umbral de lluvia acumulada en 5 días", fuente: ex.fuente_lluvia || "clima histórico",
+          nota: "Lluvia acumulada en 5 días que se considera aguacero extremo.", categoria: "observado" })}</li>
+        <li><small>Peor año del registro</small>${ex.peor_anio_lluvia ? dato(
+          `${ex.peor_anio_lluvia.anio}: ${num(ex.peor_anio_lluvia.rx5day_mm)} mm`, {
+            titulo: "Peor año de lluvia en 5 días", fuente: ex.fuente_lluvia || "clima histórico",
+            nota: "Año con el mayor acumulado de 5 días.", categoria: "observado" })
+          : dato("por determinar", { estado: "por determinar" })}</li>
+        <li><small>Sensibilidad al anegamiento</small>${dato(ex.sensibilidad_anegamiento ?? "por determinar", {
+          titulo: "Sensibilidad del cultivo al anegamiento", fuente: "ficha del cultivo",
+          categoria: ex.sensibilidad_anegamiento ? "declarado" : "por determinar" })}</li>
+        <li><small>Nivel de exceso</small>${etq(ex.nivel_exceso ?? "por determinar")}</li>
+      </ul>
+      <p class="ayuda">El charco del dibujo es potencial: refleja historia de lluvia, no agua vista en la parcela.</p>
+    </details>` : ""}
     <p class="ayuda">${m.charco ? "Charco: riesgo potencial de exceso de lluvia medio o alto, no encharcamiento observado. " : ""}${
       m.cobertura != null && m.cobertura >= 1 ? `Brillos: la dotación cubre la demanda (${pct(m.cobertura)}). ` : ""}${
       m.conCiclo ? "El ciclo compara dos duraciones del motor; no es el estado de hoy." : "Sin turno o autonomía no se anima el ciclo de riego."}</p>

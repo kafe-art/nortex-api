@@ -35,11 +35,12 @@ function cargarLeaflet() {
 }
 const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/* Los tres haces del vuelo: fuentes satelitales que esta API descarga de verdad. */
+/* Los tres haces del vuelo: las fuentes que esta API descarga de verdad. Solo dos son satelitales
+ * (IMERG y SRTM); POWER es un modelo de reanálisis, no un satélite, y la interfaz no debe llamarlo así. */
 const SATELITES = [
-  { fuente: "power", nombre: "NASA POWER", que: "temperatura y evaporación desde 1991", x: 16 },
-  { fuente: "imerg", nombre: "GPM IMERG", que: "lluvia y aguaceros desde 2001", x: 50 },
-  { fuente: "srtm", nombre: "SRTM", que: "altitud y pendiente del terreno", x: 84 },
+  { fuente: "power", nombre: "NASA POWER", tipo: "modelo", que: "reanálisis: temperatura y evaporación desde 1991", x: 16 },
+  { fuente: "imerg", nombre: "GPM IMERG", tipo: "satélite", que: "lluvia y aguaceros desde 2001", x: 50 },
+  { fuente: "srtm", nombre: "SRTM", tipo: "radar 2000", que: "altitud y pendiente del terreno", x: 84 },
 ];
 const NOMBRE_FUENTE = { power: "NASA POWER", imerg: "GPM IMERG", srtm: "SRTM (relieve)", soilgrids: "SoilGrids (suelo)", enso: "ICEN / ONI (El Niño)",
   estacion: "Estación NOAA Piura", senamhi_reportes: "Reportes SENAMHI (reservorio)" };
@@ -180,7 +181,8 @@ export function crearOrbita(ctx) {
         <svg viewBox="0 0 48 24" aria-hidden="true"><rect x="19" y="7" width="10" height="10" rx="2"/><path d="M2 8h14v8H2zM32 8h14v8H32zM16 12h3M29 12h3M24 17v5"/></svg>
         <b>${esc(s.nombre)}</b><small>${esc(s.que)}</small>
         ${dato(ok ? (f.desde ? `${f.desde.slice(0, 4)} → ${f.hasta.slice(0, 4)}` : "conectado") : (f?.estado ?? "sin consultar"), {
-          titulo: s.nombre, fuente: `GET /parcelas/${estado.parcela}/fuentes`, categoria: "observado",
+          titulo: `${s.nombre} (${s.tipo})`, fuente: `GET /parcelas/${estado.parcela}/fuentes`,
+          categoria: s.fuente === "power" ? "modelado" : "observado",
           nota: ok ? `${num(f.filas)} registros${f.desde ? ` del ${f.desde} al ${f.hasta}` : ""}. Serie archivada; no es una señal en vivo.`
             : "Serie sin descargar: usa «Traer datos de la NASA» en Mi parcela.", estado: ok ? "real" : "por determinar" })}</li>`;
     }).join("");
@@ -208,7 +210,7 @@ export function crearOrbita(ctx) {
       await Promise.race([llegada, pausa(6000)]);
       vista.dataset.fase = "enlace"; pintarHaces();
       const n = SATELITES.filter((s) => fuentes.find((f) => f.fuente === s.fuente)?.estado === "ok").length;
-      texto.textContent = n ? `${n} de ${SATELITES.length} satélites enlazados con la chacra · leyendo su historia` : "Esta chacra aún no tiene series descargadas";
+      texto.textContent = n ? `${n} de ${SATELITES.length} fuentes enlazadas con la chacra · leyendo su historia` : "Esta chacra aún no tiene series descargadas";
       await Promise.all([Promise.resolve(esperar).catch(() => {}), pausa(2300)]);
     })();
     await Promise.race([pelicula, salto]);
@@ -300,12 +302,17 @@ export function crearOrbita(ctx) {
     const [soil, rel, lab, pcr, turn, riego] = consultas.map((x) => (x.status === "fulfilled" ? x.value : []));
     const ultimo = (arr, key) => [...arr].filter((x) => x[key] != null).sort((a, b) =>
       String(a.fecha_muestreo || a.fecha || a.fecha_inicio || a.date || "").localeCompare(String(b.fecha_muestreo || b.fecha || b.fecha_inicio || b.date || ""))).at(-1);
-    const serie = (arr, key, label, unit) => {
+    const serie = (arr, key, label, unit, naturaleza = "derivado") => {
       const x = ultimo(arr.filter((r) => r.variable === key), "value");
+      const origen = x?.source || x?.product || key;
+      const cuando = x?.date ? `Fecha: ${x.date}. ` : "Sin fecha de campaña: capa estática del mapa. ";
       return dato(x ? `${num(x.value, 3)} ${unit}` : "por determinar", {
-        titulo: label, fuente: x?.source || x?.product || key,
-        nota: x ? `Fecha: ${x.date || "no declarada"}. Estimación satelital/regional.` : "Fuente no disponible.",
-        estado: x ? "real" : "por determinar" });
+        titulo: label, fuente: origen,
+        nota: x ? `${cuando}${naturaleza === "radar"
+          ? "Radar SRTM del año 2000: relieve de referencia, no una medición de hoy."
+          : "Modelo global de suelo (250 m) por pedotransferencia: no es una medición de la parcela."}`
+          : "Fuente no disponible.",
+        categoria: naturaleza, estado: x ? "modelado" : "por determinar" });
     };
     const campo = (key, varname, label, unit) => {
       const x = ultimo(lab, key);
@@ -325,8 +332,8 @@ export function crearOrbita(ctx) {
       </div>
       <div class="chequeo-card">
         <p class="eyebrow">Relieve y drenaje</p>
-        <p>Pendiente (SRTM): ${serie(rel, "slope", "Pendiente del terreno (SRTM)", "%")}</p>
-        <p>Arcilla (SoilGrids): ${serie(soil, "soil_clay", "Contenido de arcilla (SoilGrids)", "%")}</p>
+        <p>Pendiente (SRTM): ${serie(rel, "slope", "Pendiente del terreno (SRTM)", "%", "radar")}</p>
+        <p>Arcilla (SoilGrids): ${serie(soil, "soil_clay", "Contenido de arcilla (SoilGrids)", "%", "suelo")}</p>
         <p>Napa / salinidad: ${registros(lab, ["napa_m", "ece_dsm"], "Análisis de suelo (napa y CEe)")}</p>
       </div>
       <div class="chequeo-card">

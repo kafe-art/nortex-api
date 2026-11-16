@@ -188,6 +188,7 @@ def actualizar_fuentes(aoi_id: str, fuentes: list[str] | None = None) -> list[di
 
 
 def estado_fuentes(aoi_id: str) -> list[dict]:
+    estaticas = {"soilgrids", "srtm"}      # capas de mapa: no tienen fecha de campaña
     out = []
     for fuente, _, _ in FUENTES:
         df = almacen.leer_serie(aoi_id, fuente)
@@ -198,7 +199,8 @@ def estado_fuentes(aoi_id: str) -> list[dict]:
         out.append({"fuente": fuente, "estado": "ok", "filas": len(df),
                     "variables": sorted(df["variable"].unique()),
                     "desde": None if fechas.empty else str(fechas.min().date()),
-                    "hasta": None if fechas.empty else str(fechas.max().date())})
+                    "hasta": None if fechas.empty else str(fechas.max().date()),
+                    "estatico": fuente in estaticas and fechas.empty})
     return out
 
 

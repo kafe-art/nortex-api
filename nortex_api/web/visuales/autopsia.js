@@ -8,7 +8,7 @@
  * Lo provisional se marca con borde punteado ámbar; lo que falta se dice «por determinar».
  * Devuelve {destruir()} para detener el canvas al cambiar de decisión. */
 
-import { $, esc, etq, datoRes, NOMBRES, ESCENARIOS, estadoDato, fechaCorta } from "../util.js";
+import { $, esc, etq, datoRes, num, pct, NOMBRES, ESCENARIOS, estadoDato, fechaCorta } from "../util.js";
 import { sol } from "./sol.js";
 import { modeloSuelo, leyendaSuelo, pintarSuelo, altSuelo } from "./suelo.js";
 import { balanza, costoDe } from "./balanza.js";
@@ -22,6 +22,85 @@ export function cuatroMini(d) {
     <div><dt>Riesgo</dt><dd><b>${altos}</b> altos · <b>${medios}</b> medios</dd></div>
     <div><dt>Conveniencia</dt><dd>${m == null ? etq("por determinar", "gris") : `S/ ${Math.round(m).toLocaleString("es-PE")}/ha`}</dd></div>
     <div><dt>Fundamentación</dt><dd>${etq(d.fundamentacion.nivel)}</dd></div></dl>`;
+}
+
+/** Etiquetas del balance hídrico: las 15 cifras del motor que la interfaz no mostraba. */
+const ETIQ_BALANCE = {
+  et0_total: "Evapotranspiración de referencia (ET0)",
+  precip_total: "Lluvia de la campaña",
+  etc_total: "Demanda del cultivo (ETc)",
+  eta_total: "Agua realmente transpirada (ETa)",
+  deficit_transpiracion: "Déficit de transpiración",
+  riego_neto: "Riego neto",
+  riego_bruto: "Riego bruto",
+  demanda_bruta: "Demanda bruta de agua",
+  percolacion: "Percolación (agua que se pierde)",
+  cierre_balance: "Cierre del balance",
+  taw: "Agua total disponible en el suelo (TAW)",
+  raw: "Agua fácilmente disponible (RAW)",
+  gdd: "Grados día de desarrollo (GDD)",
+  dias_calor_etapa_media: "Días sobre el umbral de calor",
+  rendimiento_relativo_salinidad: "Rendimiento relativo por salinidad",
+};
+
+/** Balance hídrico de la campaña, agrupado como lo leería un agricultor (no como una tabla técnica). */
+export function balanceHtml(res = {}, escenario = "deficit_medio") {
+  const bloque = (titulo, claves) => {
+    const items = claves.filter((k) => k in (res || {}));
+    if (!items.length) return "";
+    return `<div><h5>${esc(titulo)}</h5><ul class="suelo-fichas">${items.map((k) => {
+      const r = res[k], decimales = k === "percolacion" || k === "cierre_balance" ? 1 : 0;
+      const unidad = k === "gdd" ? "°C·d" : k === "rendimiento_relativo_salinidad" ? "%" : r?.unidad;
+      return `<li><small>${esc(ETIQ_BALANCE[k] || k)}</small>${datoRes(r, ETIQ_BALANCE[k] || k,
+        { d: decimales, unidad })}</li>`;
+    }).join("")}</ul></div>`;
+  };
+  const grupos = [
+    bloque("Agua que entra y se pierde", ["precip_total", "riego_neto", "riego_bruto", "et0_total", "percolacion"]),
+    bloque("Demanda y consumo del cultivo", ["etc_total", "eta_total", "deficit_transpiracion", "demanda_bruta"]),
+    bloque("Reserva del suelo", ["taw", "raw", "cierre_balance"]),
+    bloque("Desarrollo y salinidad", ["gdd", "dias_calor_etapa_media", "rendimiento_relativo_salinidad"]),
+  ].filter(Boolean);
+  if (!grupos.length) return "";
+  const nombre = ESCENARIOS[escenario]?.nombre || escenario;
+  return `<details class="balance"><summary>Balance hídrico de la campaña · ${esc(nombre)}</summary>
+    <div class="balance-grupos">${grupos.join("")}</div>
+    <p class="ayuda">Cifras del escenario elegido, tal como las calcula el motor. Los mm son lámina de agua
+    sobre la parcela; los m³ son volumen para su área.</p></details>`;
+}
+
+/** Contexto que el motor ya devuelve y la interfaz no mostraba: robustez, validación, reservorio y ENSO. */
+export function contextoHtml(d = {}) {
+  const h = d.hindcast || {}, v = d.validacion, r = d.reservorio, e = d.enso;
+  const partes = [];
+  if (d.robustez) partes.push(`Robustez de los escenarios: ${etq(d.robustez)}`);
+  const tmax = v?.variables?.tmax;
+  if (tmax?.despues_cv) partes.push(`Clima corregido con ${esc(v.estacion || "una estación")}: ` +
+    `${num(v.dias_comunes)} días comunes, r(Tmax) ${num(tmax.despues_cv.r, 2)}, MAE ${num(tmax.despues_cv.mae, 2)} °C`);
+  if (r?.volumen_hm3 != null) {
+    const viejo = r.antiguedad_dias > 30;
+    partes.push(`Reservorio: ${num(r.volumen_hm3, 1)} hm³` +
+      `${r.porcentaje_capacidad != null ? ` (${num(r.porcentaje_capacidad)} % de su capacidad)` : ""}` +
+      ` · dato de ${esc(r.fecha_dato)}${viejo ? ` — ${num(r.antiguedad_dias)} días de antigüedad: no describe hoy` : ""}`);
+  }
+  if (e?.icen_ultimo) partes.push(`ENSO: ICEN ${num(e.icen_ultimo[1], 2)} en ${esc(e.icen_ultimo[0])}`);
+  if (h.detalle?.length) {
+    const dentro = h.detalle.filter((x) => x.dentro).map((x) => x.anio).join(", ");
+    partes.push(`Hindcast, año por año: ${esc(h.aciertos)} de ${esc(h.anios_probados)} dentro del rango` +
+      `${dentro ? ` (${esc(dentro)})` : ""}`);
+  }
+  return partes.length ? `<ul class="contexto-motor">${partes.map((p) => `<li>${p}</li>`).join("")}</ul>` : "";
+}
+
+/** Hindcast en una frase: siempre con su intervalo, y sin dar por firme lo que el intervalo no sostiene. */
+export function hindcastTexto(h) {
+  if (!h) return "Prueba histórica (hindcast): por determinar.";
+  const [lo, hi] = h.ic95 || [];
+  const partes = [`Prueba histórica (hindcast): ${h.veredicto ?? "por determinar"}`];
+  if (h.aciertos != null) partes.push(`${h.aciertos} de ${h.anios_probados} años`);
+  if (lo != null) partes.push(`IC95 ${pct(lo)}–${pct(hi)}`);
+  const flojo = lo != null && lo <= 0.7;
+  return `${esc(partes.join(" · "))}.${flojo ? " El intervalo no descarta un acierto menor al 70 %: es un indicio, no una calibración firme." : ""}`;
 }
 
 const INSUMO = { dotacion: "dotación", parametros_cultivo: "parámetros del cultivo", economia: "economía" };
@@ -63,7 +142,7 @@ export function montarAutopsia(el, { decision: d, catalogo, economia, escenario 
           ${sol({ extremos: d.extremos, riesgo: d.riesgo })}</section>
         <section class="tri tri-suelo ${turnoEjemplo ? "provisional" : ""}" aria-label="La sed de la raíz"><p class="eyebrow">La sed de la raíz</p>
           <figure class="suelo"><canvas role="img" aria-label="${esc(altSuelo(m))}"></canvas>
-            ${leyendaSuelo(m, { res, intervalo, zr })}</figure>
+            ${leyendaSuelo(m, { res, intervalo, zr, extremos: d.extremos })}</figure>
           ${turnoEjemplo ? '<p class="sello-provisional">Turno o dotación de ejemplo: falta el dato de la junta</p>' : ""}</section>
         <section class="tri tri-balanza" aria-label="La balanza de la cosecha"><p class="eyebrow">La balanza de la cosecha</p>
           ${balanza({ conveniencia: d.conveniencia, escenario: esc_, costo: costoDe(economia, d.cultivo) })}</section>
@@ -109,14 +188,16 @@ export function montarAutopsia(el, { decision: d, catalogo, economia, escenario 
         </details>
       </div>
 
+      ${balanceHtml(res, esc_)}
+
       ${(d.viabilidad.reglas_transicion || []).length ? `<ul class="reglas">${d.viabilidad.reglas_transicion.map(reglaHtml).join("")}</ul>` : ""}
       ${(d.advertencias || []).length ? `<details class="advertencias"><summary>Lo que debes tener presente (${d.advertencias.length})</summary><ul>${
         d.advertencias.map((a) => `<li>${esc(a)}</li>`).join("")}</ul></details>` : ""}
       <details class="cifras"><summary>Todas las cifras del escenario, con su fuente</summary>
         <div class="datos-tecnicos">${Object.entries(res).map(([k, v]) => `<p><span>${esc(k.replace(/_/g, " "))}</span>${datoRes(v, k, { d: 2 })}</p>`).join("")}
           ${Object.entries(d.insumos_efectivos || {}).map(([k, v]) => `<p><span>insumo · ${esc(k.replace(/_/g, " "))}</span>${datoRes(v, k, { d: 3 })}</p>`).join("")}</div>
-        <p class="ayuda">Prueba histórica (hindcast): ${esc(d.hindcast?.veredicto ?? "por determinar")}${d.hindcast?.aciertos != null
-          ? ` · ${esc(d.hindcast.aciertos)} de ${esc(d.hindcast.anios_probados)} años` : ""}.</p>
+        ${contextoHtml(d)}
+        <p class="ayuda">${hindcastTexto(d.hindcast)}</p>
         <ul class="procedencia">${Object.entries(d.procedencia || {}).map(([k, v]) => `<li><b>${esc(k)}:</b> ${esc(v)}</li>`).join("")}</ul>
       </details>
     </article>`;

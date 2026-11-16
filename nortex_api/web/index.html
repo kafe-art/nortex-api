@@ -18,25 +18,66 @@
 <!-- CAPA 0 · Atmósfera: cielo y polvo en Canvas 2D (visuales/ambiente.js). Decorativa. -->
 <canvas id="ambiente" aria-hidden="true"></canvas>
 
-<!-- CAPA 1 · Horizonte agrícola de San Lorenzo (SVG, decorativo) -->
-<svg id="horizonte" viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+<!-- CAPA 1 · Paisaje agrícola del Valle de San Lorenzo, Tambogrande (SVG ilustrado, decorativo) -->
+<svg id="horizonte" viewBox="0 0 1440 520" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
   <defs>
-    <linearGradient id="hz-lejos" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C5DCB0"/><stop offset="1" stop-color="#9CC082"/></linearGradient>
-    <linearGradient id="hz-cerca" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D9E8BE"/><stop offset="1" stop-color="#FAFBF3"/></linearGradient>
+    <linearGradient id="hz-cordillera" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8AB4A6" stop-opacity=".75"/>
+      <stop offset="1" stop-color="#B9D6BC" stop-opacity=".95"/>
+    </linearGradient>
+    <linearGradient id="hz-lomas" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#689F63"/>
+      <stop offset="1" stop-color="#3E7542"/>
+    </linearGradient>
+    <linearGradient id="hz-represa" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6EC3E8"/>
+      <stop offset=".5" stop-color="#B8E9FA"/>
+      <stop offset="1" stop-color="#58B2DC"/>
+    </linearGradient>
+    <linearGradient id="hz-pradera" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#92C456"/>
+      <stop offset=".45" stop-color="#C2DE80"/>
+      <stop offset="1" stop-color="#EEF5D8"/>
+    </linearGradient>
+    <linearGradient id="hz-canal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8CE0FA"/>
+      <stop offset="1" stop-color="#1996C8"/>
+    </linearGradient>
+    <radialGradient id="hz-sol-valle" cx="76%" cy="24%" r="48%">
+      <stop offset="0" stop-color="#FFF4B8" stop-opacity=".95"/>
+      <stop offset=".45" stop-color="#FFE082" stop-opacity=".38"/>
+      <stop offset="1" stop-color="#FFE082" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <path class="hz-cerro" d="M0 210 Q120 150 260 190 T520 170 Q660 120 800 180 T1080 160 Q1260 120 1440 190 V420 H0Z" fill="url(#hz-lejos)" opacity=".85"/>
-  <path d="M0 250 Q200 215 420 240 T860 232 Q1100 210 1440 246 V420 H0Z" fill="#B5D39C"/>
-  <!-- Algarrobos: copa ancha y plana -->
-  <g class="hz-arbol" fill="#2A5A3B">
-    <path d="M170 246c-46-4-58-34-22-44 10-22 62-26 78-4 40 2 44 40 4 46z"/><rect x="186" y="240" width="6" height="26"/>
-    <path d="M1110 238c-56-4-70-40-28-52 14-26 76-30 94-4 48 2 52 46 6 54z"/><rect x="1136" y="232" width="7" height="30"/>
-    <path d="M640 236c-30-2-38-22-14-28 6-14 40-16 50-2 26 2 28 26 2 30z"/><rect x="650" y="232" width="4" height="18"/>
+  <!-- Resplandor solar sobre los cerros de Las Lomas -->
+  <circle cx="1090" cy="130" r="240" fill="url(#hz-sol-valle)"/>
+  <circle cx="1090" cy="130" r="46" fill="#FFF7CC" opacity=".88"/>
+  <!-- Cordillera lejana de Piura -->
+  <path class="hz-cerro" d="M0 235 Q150 155 310 198 T620 175 Q790 115 960 172 T1260 142 Q1360 120 1440 165 V520 H0Z" fill="url(#hz-cordillera)"/>
+  <!-- Espejo de agua de la Represa de San Lorenzo entre las lomas -->
+  <path d="M820 226 Q980 214 1160 224 Q1080 242 910 240 Z" fill="url(#hz-represa)" opacity=".92"/>
+  <path d="M875 228 H1095 M920 234 H1050" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".75"/>
+  <!-- Colinas medias del bosque seco y frutales -->
+  <path d="M0 278 Q210 228 450 264 T890 252 Q1150 216 1440 268 V520 H0Z" fill="url(#hz-lomas)"/>
+  <!-- Algarrobos y mangos en las lomas -->
+  <g class="hz-arbol" fill="#1F4F2C">
+    <path d="M135 276c-48-4-60-36-24-46 10-24 64-28 82-4 42 2 46 42 4 48z"/><rect x="152" y="270" width="6" height="28" fill="#3D2B1F"/>
+    <path d="M355 268c-32-3-40-24-16-30 7-16 42-18 54-3 28 2 30 28 3 32z"/><rect x="366" y="264" width="4.5" height="20" fill="#3D2B1F"/>
+    <path d="M630 262c-36-3-44-26-18-33 8-18 48-20 60-3 30 2 33 30 3 35z"/><rect x="642" y="256" width="5" height="22" fill="#3D2B1F"/>
+    <path d="M1155 262c-56-4-70-40-28-52 14-26 76-30 94-4 48 2 52 46 6 54z"/><rect x="1180" y="255" width="7" height="32" fill="#3D2B1F"/>
+    <path d="M1310 272c-34-3-42-25-17-32 8-16 45-19 56-3 28 2 31 28 3 34z"/><rect x="1322" y="267" width="5" height="20" fill="#3D2B1F"/>
   </g>
-  <path d="M0 262 Q360 240 720 256 T1440 262 V420 H0Z" fill="url(#hz-cerca)"/>
-  <!-- Surcos en perspectiva hacia el punto de fuga -->
-  <g class="hz-surcos" stroke="#A3BE88" stroke-width="2" fill="none" opacity=".65">
-    <path d="M720 258 L-200 420"/><path d="M720 258 L120 420"/><path d="M720 258 L420 420"/><path d="M720 258 L640 420"/>
-    <path d="M720 258 L800 420"/><path d="M720 258 L1020 420"/><path d="M720 258 L1320 420"/><path d="M720 258 L1640 420"/>
+  <!-- Valle agrícola iluminado (terrazas y parcelas) -->
+  <path d="M0 302 Q360 268 720 290 T1440 294 V520 H0Z" fill="url(#hz-pradera)"/>
+  <!-- Franjas de cultivo soleadas -->
+  <path d="M0 340 Q420 315 820 336 T1440 332 V520 H0Z" fill="#D5E89B" opacity=".68"/>
+  <!-- Canal de irrigación de San Lorenzo reflejando el cielo -->
+  <path d="M748 290 Q715 365 620 520 H678 Q736 365 760 290 Z" fill="url(#hz-canal)" opacity=".82"/>
+  <path d="M748 290 Q715 365 620 520" stroke="#E1F7FE" stroke-width="2.5" fill="none" opacity=".85"/>
+  <!-- Surcos agrícolas en perspectiva -->
+  <g class="hz-surcos" stroke="#6E9E48" stroke-width="2.2" fill="none" opacity=".48">
+    <path d="M720 290 L-240 520"/><path d="M720 290 L40 520"/><path d="M720 290 L290 520"/><path d="M720 290 L510 520"/>
+    <path d="M770 290 L860 520"/><path d="M770 290 L1080 520"/><path d="M770 290 L1340 520"/><path d="M770 290 L1660 520"/>
   </g>
 </svg>
 
@@ -103,7 +144,11 @@
           </div>
         </div>
       </div>
-      <h1 id="portal-titulo">Tus decisiones de siembra,<br><em>respaldadas por 30 años de ciencia espacial</em></h1>
+      <h1 id="portal-titulo">
+        <span class="titulo-principal">Tus decisiones de siembra,</span>
+        <em class="titulo-destacado">respaldadas por 30 años de ciencia espacial</em>
+      </h1>
+      <div class="titulo-ornamento" aria-hidden="true"><span></span><i></i><span></span></div>
       <p class="portal-sub">Cruzamos el comportamiento climático histórico de San Lorenzo con la realidad de tu suelo
         para recomendarte qué sembrar y cuándo hacerlo con total certeza.</p>
       <div class="puertas">
