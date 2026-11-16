@@ -129,48 +129,45 @@ details > summary::-webkit-details-marker { display: none; }
 .cuatro-mini dd { margin: 0; font-size: .92rem; } .cuatro-mini .etq { white-space: normal; }
 
 /* 5 · Portal --------------------------------------------------------------------------------------- */
-#esc-portal { display: grid; place-items: center; text-align: center; padding-bottom: 9rem; }
-.portal { max-width: 860px; width: 100%; }
-.portal-insignias { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .9rem 1.35rem; margin: 0 auto 1.6rem; padding: .65rem 1.35rem;
-  border-radius: 999px; background: rgba(255, 255, 255, .62); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+#esc-portal { display: grid; place-items: center; text-align: center; min-height: 100dvh; padding: calc(var(--hud) + .6rem) clamp(1.1rem, 5vw, 3.5rem) 1.4rem; }
+.portal { max-width: 780px; width: 100%; margin: auto; }
+.portal-insignias { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .75rem 1.2rem; margin: 0 auto 1rem; padding: .5rem 1.2rem;
+  border-radius: 999px; background: rgba(255, 255, 255, .68); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(18, 48, 31, .12); box-shadow: 0 10px 30px -14px rgba(18, 48, 31, .18); }
 .insignia-equipo { display: flex; align-items: center; }
-.insignia-nortex { height: 46px; width: auto; object-fit: contain; display: block; filter: drop-shadow(0 2px 6px rgba(18, 48, 31, .1)); }
-.insignia-sep { width: 1px; height: 36px; background: rgba(18, 48, 31, .18); }
-.insignia-nasa { display: flex; align-items: center; gap: .65rem; text-align: left; }
-.nasa-emblema { width: 44px; height: 44px; flex-shrink: 0; filter: drop-shadow(0 4px 10px rgba(11, 35, 74, .25)); }
-.nasa-txt { display: grid; line-height: 1.18; }
-.nasa-txt span { font: 600 .62rem/1.2 var(--fuente); letter-spacing: .16em; text-transform: uppercase; color: #0B3D91; }
-.nasa-txt strong { font: 700 .88rem/1.2 var(--fuente); color: var(--tinta); letter-spacing: -.01em; }
-.nasa-txt small { font-size: .72rem; color: var(--suave); }
+.insignia-nortex { height: 40px; width: auto; object-fit: contain; display: block; filter: drop-shadow(0 2px 6px rgba(18, 48, 31, .1)); }
+.insignia-sep { width: 1px; height: 32px; background: rgba(18, 48, 31, .18); }
+.insignia-nasa { display: flex; align-items: center; gap: .6rem; text-align: left; }
+.nasa-emblema { width: 40px; height: 40px; flex-shrink: 0; filter: drop-shadow(0 4px 10px rgba(11, 35, 74, .25)); }
+.nasa-txt { display: grid; line-height: 1.15; }
+.nasa-txt span { font: 600 .6rem/1.2 var(--fuente); letter-spacing: .16em; text-transform: uppercase; color: #0B3D91; }
+.nasa-txt strong { font: 700 .84rem/1.2 var(--fuente); color: var(--tinta); letter-spacing: -.01em; }
+.nasa-txt small { font-size: .7rem; color: var(--suave); }
 @media (max-width: 560px) {
-  .portal-insignias { border-radius: 24px; padding: .75rem 1rem; gap: .6rem 1rem; }
+  .portal-insignias { border-radius: 24px; padding: .6rem .9rem; gap: .5rem .8rem; }
   .insignia-sep { display: none; }
 }
-.portal h1 { font-family: var(--fuente-editorial); font-size: clamp(2.15rem, 1.15rem + 3.9vw, 4.15rem); font-weight: 600; line-height: 1.08; text-wrap: balance; letter-spacing: -.025em;
-  display: grid; gap: .18em; justify-items: center; text-shadow: 0 2px 24px rgba(255, 255, 255, .85); }
-.titulo-principal { display: block; color: var(--tinta); }
-.portal h1 em, .titulo-destacado { font-family: var(--fuente-editorial); font-style: italic; font-weight: 400; display: block; padding: 0 .08em;
-  color: #1B6336; background: linear-gradient(135deg, #124D29 0%, #24753E 52%, #8A6812 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.titulo-ornamento { display: flex; align-items: center; justify-content: center; gap: .65rem; margin: 1.1rem auto .2rem; }
-.titulo-ornamento span { width: 54px; height: 1.5px; background: linear-gradient(90deg, transparent, rgba(18, 48, 31, .32), transparent); }
-.titulo-ornamento i { width: 9px; height: 9px; border-radius: 2px; transform: rotate(45deg); background: #D9A426; box-shadow: 0 0 0 3px rgba(217, 164, 38, .22); }
-.portal-sub { font-size: clamp(1.02rem, .9rem + .55vw, 1.2rem); max-width: 44rem; margin: .9rem auto 2.4rem; padding: .55rem 1.2rem; border-radius: 20px;
-  background: rgba(255, 255, 255, .58); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #243D2E; font-weight: 500; text-wrap: pretty; }
-.puertas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.4rem; perspective: 1100px; }
-.puerta { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; position: relative; overflow: hidden; display: grid; justify-items: center; gap: 1rem; padding: 2.2rem 1.6rem 2rem;
-  border-radius: 32px; border: 1px solid var(--linea); background: var(--papel); min-height: 240px; text-align: center; box-shadow: var(--sombra);
+.portal h1 { font-family: var(--fuente-editorial); font-size: clamp(2.8rem, 1.5rem + 4.8vw, 4.9rem); font-weight: 600; line-height: 1.02; text-wrap: balance; letter-spacing: -.03em;
+  color: var(--tinta); text-shadow: 0 2px 24px rgba(255, 255, 255, .85); }
+.portal h1 em { font-family: var(--fuente-editorial); font-style: italic; font-weight: 400; padding: 0 .06em;
+  color: #1B6336; background: linear-gradient(135deg, #124D29 0%, #24753E 55%, #8A6812 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.portal-sub { font-family: var(--fuente-editorial); font-style: italic; font-size: clamp(1.35rem, 1rem + 1.3vw, 2rem); max-width: 36rem; margin: .3rem auto 1.4rem;
+  color: #1B4D2E; font-weight: 400; letter-spacing: -.01em; text-shadow: 0 1px 16px rgba(255, 255, 255, .9); }
+.puertas { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.2rem; max-width: 720px; margin: 0 auto; perspective: 1100px; }
+.puerta { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; position: relative; overflow: hidden; display: grid; justify-items: center; align-content: center; gap: .75rem; padding: 1.5rem 1.4rem 1.4rem;
+  border-radius: 28px; border: 1px solid var(--linea); background: rgba(255, 255, 255, .92); backdrop-filter: blur(8px); min-height: 185px; text-align: center; box-shadow: var(--sombra);
   transform: rotateX(var(--rx)) rotateY(var(--ry)); transform-style: preserve-3d; transition: transform .6s var(--rebote), box-shadow .4s; }
 .puerta:hover:not(:disabled) { background: var(--papel); transform: rotateX(var(--rx)) rotateY(var(--ry)) translateZ(16px); box-shadow: 0 2px 4px rgba(18, 48, 31, .06), 0 30px 50px -20px rgba(18, 48, 31, .3); }
 .puerta-brillo { position: absolute; inset: 0; background: radial-gradient(260px circle at var(--mx) var(--my), rgba(217, 242, 58, .35), transparent 65%); pointer-events: none; }
-.puerta svg { width: 76px; height: 76px; padding: 14px; border-radius: 50%; fill: none; stroke: var(--tinta); stroke-width: 3.500; stroke-linecap: round; stroke-linejoin: round; transform: translateZ(30px); animation: respirar 4.5s ease-in-out infinite; }
+.puerta svg { width: 62px; height: 62px; padding: 12px; border-radius: 50%; fill: none; stroke: var(--tinta); stroke-width: 3.500; stroke-linecap: round; stroke-linejoin: round; transform: translateZ(30px); animation: respirar 4.5s ease-in-out infinite; }
 .puerta-que svg { background: var(--lima); } .puerta-cuando svg { background: #FFE2A6; }
-.puerta-txt { transform: translateZ(20px); display: grid; gap: .35rem; }
-.puerta-txt b { font: 600 clamp(1.5rem, 1.1rem + 1.5vw, 1.95rem)/1.08 var(--fuente-editorial); letter-spacing: -.02em; }
-.puerta-txt small { color: var(--suave); font-size: .95rem; }
-.portal-menor { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem 2rem; margin-top: 1.8rem; }
-.portal-chacra { font-size: .95rem; color: var(--suave); min-height: 1.5em; margin-top: 1rem; }
-.portal-cielo { margin-top: .3rem; }
+.puerta-txt { transform: translateZ(20px); display: grid; gap: .25rem; }
+.puerta-txt b { font: 600 clamp(1.45rem, 1.1rem + 1.2vw, 1.8rem)/1.08 var(--fuente-editorial); letter-spacing: -.02em; }
+.puerta-txt small { color: var(--suave); font-size: .9rem; }
+.portal-menor { display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem 1.8rem; margin-top: 1rem;
+  padding: .25rem 1rem; border-radius: 999px; background: rgba(255, 255, 255, .62); backdrop-filter: blur(6px); width: fit-content; margin-inline: auto; }
+.portal-chacra { font-size: .88rem; color: #1E3A2A; font-weight: 500; min-height: 1.4em; margin-top: .5rem; text-shadow: 0 1px 10px rgba(255, 255, 255, .85); }
+.portal-cielo { margin-top: .15rem; font-size: .82rem; color: #2A4736; text-shadow: 0 1px 10px rgba(255, 255, 255, .85); }
 
 /* 6 · Cultivos vivos (visuales/cultivos.js) -------------------------------------------------------- */
 .cultivo-vivo { width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 8px 10px rgba(18, 48, 31, .18)); }
@@ -430,6 +427,7 @@ body.en-vuelo .leyenda-valle { opacity: 0; pointer-events: none; }
 .barra-solidez span { padding: .5rem .8rem; font-size: .8rem; white-space: nowrap; min-width: max-content; background: var(--hoja); border-radius: 10px; }
 .barra-solidez [data-estado=ok] { background: #BFE3C2; } .barra-solidez [data-estado=ejemplo], .barra-solidez [data-estado=aproximado] { background: #FFF6E0; border: 1.5px dashed var(--punteado); }
 .barra-solidez [data-estado=falta] { background: #FDEDE7; border: 1px dotted var(--t-rojo); }
+.barra-solidez [data-estado=desactualizado] { background: #FCEFD7; border: 1.5px dashed var(--punteado); }
 .faltante { border-bottom: 1px solid var(--linea); font-size: .92rem; } .faltante > summary { font-weight: 400; font-size: .96rem; padding: .8rem 0; } .faltante.provisional { outline: 0; }
 .faltante > summary::after { width: 1.6rem; height: 1.6rem; font-size: .75rem; }
 
