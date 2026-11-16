@@ -145,7 +145,8 @@ export function montarAutopsia(el, { decision: d, catalogo, economia, escenario 
             ${leyendaSuelo(m, { res, intervalo, zr, extremos: d.extremos })}</figure>
           ${turnoEjemplo ? '<p class="sello-provisional">Turno o dotación de ejemplo: falta el dato de la junta</p>' : ""}</section>
         <section class="tri tri-balanza" aria-label="La balanza de la cosecha"><p class="eyebrow">La balanza de la cosecha</p>
-          ${balanza({ conveniencia: d.conveniencia, escenario: esc_, costo: costoDe(economia, d.cultivo) })}</section>
+          ${balanza({ conveniencia: d.conveniencia, escenario: esc_, costo: costoDe(economia, d.cultivo),
+            dotacion: d.insumos_efectivos?.dotacion_m3_ha })}</section>
       </div>
 
       <h4 class="cuatro-titulo">Cuatro lecturas separadas</h4>

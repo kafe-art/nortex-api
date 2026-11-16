@@ -133,6 +133,13 @@ def test_evaluar_f1_y_f2_con_datos_locales(cliente):
     assert insumos["theta_fc"]["valor"] > insumos["theta_wp"]["valor"]
     assert insumos["theta_fc"]["fuente"]
     assert insumos["intervalo_dias"]["unidad"] == "días"
+    assert insumos["area_ha"]["valor"] > 0 and insumos["area_ha"]["unidad"] == "ha"
+
+    # La decisión viaja por HTTP con el contexto que la UI muestra (no solo en el objeto Python).
+    ctx = cliente.post("/evaluar/f2", json=consulta).json()["decisiones"][0]
+    for clave in ("resumen", "validacion", "robustez", "ventanas", "hindcast", "enso"):
+        assert clave in ctx, f"falta {clave} en la respuesta HTTP"
+    assert ctx["hindcast"]["detalle"] or ctx["hindcast"]["anios_probados"] == 0
 
     # RT-01 condicionante: desde un huerto, el cambio queda «por determinar» hasta confirmar la renovación
     base = {"aoi_id": "chacra_1", "cultivos": ["caupi"], "inicio": "2021-06-01",
@@ -275,6 +282,39 @@ def test_descarga_en_segundo_plano(cliente, monkeypatch):
         _time.sleep(0.05)
     assert estado["estado"] == "terminada" and estado["fuentes"] == [{"fuente": "power"}]
     assert cliente.get("/tareas/nada").status_code == 404
+
+
+def test_historial_de_la_parcela_llega_al_motor(cliente):
+    """La tabla `historial` (con rendimiento) alimenta F2: transición y contraste de rendimiento."""
+    from nortex_api import almacen
+
+    cliente.post("/parcelas", json={"aoi_id": "chacra_1", "nombre": "Chacra", "geometria": POLIGONO})
+    _clima_power("chacra_1").to_parquet(almacen.ruta_serie("chacra_1", "power"), index=False)
+    for fila in (
+        {"fecha_siembra": "2019-01-05", "aoi_id": "chacra_1", "campania": "2018-2019",
+         "cultivo": "arroz", "fecha_cosecha": "2019-05-05", "rendimiento_t_ha": 6.0, "fuente": "cuaderno"},
+        {"fecha_siembra": "2020-01-05", "aoi_id": "chacra_1", "campania": "2019-2020",
+         "cultivo": "arroz", "fecha_cosecha": "2020-05-05", "rendimiento_t_ha": 6.5, "fuente": "cuaderno"},
+        {"fecha_siembra": "2021-01-10", "aoi_id": "chacra_1", "campania": "2020-2021",
+         "cultivo": "caupi", "fecha_cosecha": "2021-04-10", "rendimiento_t_ha": 1.2, "fuente": "cuaderno"},
+    ):
+        assert cliente.post("/datos/historial", json=fila).status_code == 201
+
+    # Sin pedir «historial» en la consulta: los cultivos anteriores salen de la tabla.
+    r = cliente.post("/evaluar/f2", json={"aoi_id": "chacra_1", "cultivos": ["caupi"],
+                                          "inicio": "2021-06-01",
+                                          "dotacion_m3_ha": 6000}).json()
+    fila = r["tabla"][0]
+    assert fila["transicion"] == "continuidad"  # la última campaña declarada fue caupí
+    conv = r["decisiones"][0]["conveniencia"]
+    assert conv["historial"]["n"] == 1 and conv["historial"]["media_t_ha"] == 1.2
+
+    # Pedido explícito: manda la consulta y el rendimiento histórico igual contrasta.
+    r2 = cliente.post("/evaluar/f2", json={"aoi_id": "chacra_1", "cultivos": ["caupi"],
+                                           "inicio": "2021-06-01", "historial": ["arroz"],
+                                           "dotacion_m3_ha": 6000}).json()
+    assert r2["tabla"][0]["transicion"] == "cambio"
+    assert r2["decisiones"][0]["conveniencia"]["historial"]["ultimo_t_ha"] == 1.2
 
 
 def test_serie_mensual(cliente):

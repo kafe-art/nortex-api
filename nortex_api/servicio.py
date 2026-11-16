@@ -271,6 +271,11 @@ def _decision_web(decision) -> dict:
                  "categoria": "insumo", "nota": "Valor usado en esta evaluación; no medición actual."}
         for nombre, valor, unidad, origen in campos
     }
+    salida["insumos_efectivos"]["area_ha"] = {
+        "valor": getattr(ev, "area_ha", 1.0), "unidad": "ha", "fuente": "área de la parcela (catastro de la API)",
+        "categoria": "declarado",
+        "nota": "Convierte la lámina de agua (mm) en volumen (m³). Si el catastro no la trae, se asume 1 ha.",
+    }
     return salida
 
 
@@ -285,11 +290,19 @@ def evaluar_f1(aoi_id: str, cultivo: str, desde, hasta, paso_dias: int,
     from nortex_motor.decision import f1_ventanas
 
     aplicar_validaciones()
+    declarados = _historial_rendimientos(aoi_id)
+    hist_efectivo = historial if historial else [f["cultivo"] for f in declarados if f.get("cultivo")]
     kw.setdefault("area_ha", _area_ha(aoi_id))
+    kw.setdefault("rendimientos", declarados)
     out = f1_ventanas(contexto(aoi_id), cultivo, desde, hasta, paso_dias,
-                      historial=historial or None, **kw)
+                      historial=hist_efectivo or None, **kw)
     return {"funcion": "F1", "regla_orden": out["regla_orden"], "tabla": _tabla(out["tabla"]),
             "decisiones": [_decision_web(d) for d in out["decisiones"]]}
+
+
+def _historial_rendimientos(aoi_id: str) -> list[dict]:
+    """Campañas declaradas de la parcela (tabla ``historial``), con su rendimiento si lo traen."""
+    return sorted(almacen.listar("historial", aoi_id), key=lambda f: (f.get("fecha_siembra") or "", f["id"]))
 
 
 def evaluar_f2(aoi_id: str, cultivos: list[str], inicio, historial: list[str],
@@ -297,9 +310,12 @@ def evaluar_f2(aoi_id: str, cultivos: list[str], inicio, historial: list[str],
     from nortex_motor.decision import f2_cultivos
 
     aplicar_validaciones()
+    declarados = _historial_rendimientos(aoi_id)
+    hist_efectivo = historial if historial else [f["cultivo"] for f in declarados if f.get("cultivo")]
     kw.setdefault("area_ha", _area_ha(aoi_id))
-    out = f2_cultivos(contexto(aoi_id), cultivos, inicio, historial,
-                      renovacion_confirmada=renovacion_confirmada, **kw)
+    out = f2_cultivos(contexto(aoi_id), cultivos, inicio, hist_efectivo,
+                      renovacion_confirmada=renovacion_confirmada,
+                      rendimientos=declarados, **kw)
     return {"funcion": "F2", "regla_orden": out["regla_orden"], "tabla": _tabla(out["tabla"]),
             "decisiones": [_decision_web(d) for d in out["decisiones"]]}
 

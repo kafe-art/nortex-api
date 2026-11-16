@@ -10,7 +10,7 @@
  * Son evaluaciones encadenadas: no simulan nutrientes, plagas ni salud del suelo entre campañas, y
  * las fechas iniciales son propuestas editables, no un calendario recomendado. */
 
-import { evaluar } from "../api.js";
+import { api, evaluar } from "../api.js";
 import { $, $$, esc, NOMBRES, iso, masDias, fechaCorta, errorHtml } from "../util.js";
 import { cultivoVivo } from "../visuales/cultivos.js";
 import { montarAutopsia, cuatroMini } from "../visuales/autopsia.js";
@@ -115,7 +115,15 @@ export function crearSecuencia(ctx) {
   $("#sec-renovacion").onchange = soltar;
 
   return {
-    entrar() { ctx.ambiente.calor(null); if (!salidas.length) pintar(); },
+    async entrar() {
+      ctx.ambiente.calor(null);
+      if (estado.parcela && !sec.previo) {
+        const filas = await api(`/datos/historial?aoi_id=${encodeURIComponent(estado.parcela)}`).catch(() => []);
+        const ult = filas.at(-1);
+        if (ult?.cultivo) sec.previo = ult.cultivo;
+      }
+      if (!salidas.length) pintar();
+    },
     refrescar: soltar,
     salir() { autopsia?.destruir(); autopsia = null; },
     /** Para la demostración: arma una secuencia concreta y la evalúa de verdad. */

@@ -145,12 +145,12 @@
         </div>
       </div>
       <h1 id="portal-titulo">
-        <span class="titulo-principal">Tus decisiones de siembra,</span>
-        <em class="titulo-destacado">respaldadas por 30 años de ciencia espacial</em>
+        <span class="titulo-principal">Siembra sobre seguro.</span>
+        <em class="titulo-destacado">30 años de clima en tu chacra.</em>
       </h1>
       <div class="titulo-ornamento" aria-hidden="true"><span></span><i></i><span></span></div>
-      <p class="portal-sub">Cruzamos el comportamiento climático histórico de San Lorenzo con la realidad de tu suelo
-        para recomendarte qué sembrar y cuándo hacerlo con total certeza.</p>
+      <p class="portal-sub">Unimos la historia satelital de San Lorenzo con la realidad de tu suelo para decirte qué
+        sembrar y cuándo hacerlo.</p>
       <div class="puertas">
         <button class="puerta puerta-que" type="button" data-puerta="laboratorio">
           <span class="puerta-brillo" aria-hidden="true"></span>
@@ -290,6 +290,23 @@
       <details class="bloque" open>
         <summary>Chequeo de la chacra (suelo, relieve y riego)</summary>
         <div id="chequeo-cuerpo"></div>
+      </details>
+      <details class="bloque" id="det-historial" open>
+        <summary>Historial de campañas de tu finca</summary>
+        <p class="ayuda">Lo que sembraste antes en esta parcela activa automáticamente las reglas de rotación (RT-01 a RT-05) en <b>¿Qué siembro?</b> y en <b>3 campañas</b>.</p>
+        <div id="lista-historial"></div>
+        <form id="form-historial">
+          <div class="barra-consulta">
+            <label>Cultivo sembrado <select name="cultivo" id="hist-cultivo" required></select></label>
+            <label>Campaña <input name="campania" placeholder="2025-2026" value="2025-2026" required></label>
+            <label>Fecha de siembra <input name="fecha_siembra" type="date" id="hist-fecha" required></label>
+            <label>Rendimiento (t/ha, opcional) <input name="rendimiento_t_ha" type="number" min="0" max="150" step="0.1" placeholder="Ej. 8.5"></label>
+          </div>
+          <div class="fila-botones">
+            <button type="submit" class="primario">Agregar al historial de la finca</button>
+          </div>
+        </form>
+        <div id="msg-historial" class="mensaje" role="status"></div>
       </details>
       <details class="bloque" open>
         <summary>El archivo del clima</summary>

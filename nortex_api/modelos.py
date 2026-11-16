@@ -84,7 +84,8 @@ IMPACTO = {
     "economia": ("SIEA / MIDAGRI, Agencia Agraria", "Margen bruto y margen por m³ (conveniencia)."),
     "reservorio": ("ANA / PE Chira-Piura", "Situación del reservorio San Lorenzo y dotación análoga."),
     "riego_parcela": ("Agricultor", "Eficiencia de riego real (si no, 0,5 por defecto)."),
-    "historial": ("Agricultor", "Reglas de transición en F2 (RT-01, RT-05)."),
+    "historial": ("Agricultor", "Reglas de transición en F2 (RT-01, RT-04, RT-05) y contraste del "
+                  "rendimiento estimado con lo cosechado en la parcela (avisa si se dispara)."),
     "caudal_quiroz": ("ANA (estación Zamba)", "Recarga del sistema (informativo)."),
     "estacion_senamhi": ("SENAMHI (solicitud formal)", "Corrige el clima con una estación del valle "
                          "(≥ 365 días) en lugar del aeropuerto de Piura."),

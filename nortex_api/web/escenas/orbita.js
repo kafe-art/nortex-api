@@ -345,6 +345,31 @@ export function crearOrbita(ctx) {
     </div>`;
   }
 
+  async function historialFinca() {
+    const id = estado.parcela, v = estado.version, el = $("#lista-historial");
+    if (!el) return;
+    if (!id) { el.innerHTML = ""; return; }
+    try {
+      const filas = await api(`/datos/historial?aoi_id=${encodeURIComponent(id)}`);
+      if (v !== estado.version) return;
+      if (!filas.length) {
+        el.innerHTML = '<p class="ayuda">Aún no hay campañas anteriores registradas para esta finca.</p>';
+        return;
+      }
+      el.innerHTML = `<ul class="senales">${filas.map((f) => `<li class="senal">
+        <b>${esc(f.cultivo)}</b> ${etq(f.campania || f.fecha_siembra, "verde")}
+        <small>Siembra: ${esc(f.fecha_siembra)}${f.rendimiento_t_ha != null ? ` · ${num(f.rendimiento_t_ha, 1)} t/ha` : ""}</small>
+        <button type="button" class="enlace" data-borrar-hist="${f.id}">Quitar</button>
+      </li>`).join("")}</ul>`;
+      $$("[data-borrar-hist]", el).forEach((b) => {
+        b.onclick = async () => {
+          await api(`/datos/historial/${b.dataset.borrarHist}`, { method: "DELETE" });
+          await ctx.datosCambiaron(); historialFinca(); solidez();
+        };
+      });
+    } catch (e) { if (v === estado.version) el.innerHTML = errorHtml(e); }
+  }
+
   async function solidez() {
     const id = estado.parcela, v = estado.version, el = $("#solidez");
     if (!id) { el.innerHTML = ""; return; }
@@ -367,7 +392,7 @@ export function crearOrbita(ctx) {
 
   async function entrar() {
     vista.dataset.fase = "enlace"; texto.textContent = "";
-    info(); chequeo(); clima(); solidez();
+    info(); chequeo(); historialFinca(); clima(); solidez();
     await leerFuentes(); senales(); pintarHaces(false);
     try {
       const m = await asegurarMapa(); m.invalidateSize();
@@ -466,9 +491,27 @@ export function crearOrbita(ctx) {
     try {
       const r = await api(`/importar/${f.get("modelo")}`, { method: "POST", body: cuerpo });
       $("#msg-csv").textContent = `${r.filas_guardadas} filas guardadas.`;
-      await ctx.datosCambiaron(); chequeo(); solidez();
+      await ctx.datosCambiaron(); chequeo(); historialFinca(); solidez();
     } catch (e) { $("#msg-csv").textContent = e.message; }
   };
+  $("#form-historial")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (!estado.parcela) { $("#msg-historial").textContent = "Elige una chacra primero."; return; }
+    const f = new FormData(ev.target);
+    const cuerpo = {
+      aoi_id: estado.parcela,
+      cultivo: f.get("cultivo"),
+      campania: f.get("campania"),
+      fecha_siembra: f.get("fecha_siembra"),
+      fuente: "declarado por el agricultor en web",
+    };
+    if (f.get("rendimiento_t_ha")) cuerpo.rendimiento_t_ha = Number(f.get("rendimiento_t_ha"));
+    try {
+      await post("/datos/historial", cuerpo);
+      await ctx.datosCambiaron(); historialFinca(); solidez();
+      $("#msg-historial").textContent = "Campaña guardada en el historial de la finca.";
+    } catch (e) { $("#msg-historial").textContent = e.message; }
+  });
   const parametro = () => { const c = estado.cultivos.find((x) => x.id === $("#val-cultivo").value), p = c?.parametros[$("#val-parametro").value];
     $("#val-actual").textContent = p ? `Valor actual: ${JSON.stringify(p.valor)} · ${p.fuente} · ${p.estado}` : ""; };
   const parametros = () => { const c = estado.cultivos.find((x) => x.id === $("#val-cultivo").value);
@@ -483,7 +526,10 @@ export function crearOrbita(ctx) {
     } catch (e) { $("#msg-validacion").textContent = e.message; }
   };
   escuchar("catalogo", () => {
-    $("#val-cultivo").innerHTML = estado.cultivos.map((c) => `<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join(""); parametros();
+    const optsCultivos = estado.cultivos.map((c) => `<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join("");
+    $("#val-cultivo").innerHTML = optsCultivos; parametros();
+    if ($("#hist-cultivo")) $("#hist-cultivo").innerHTML = optsCultivos;
+    if ($("#hist-fecha") && !$("#hist-fecha").value) $("#hist-fecha").value = "2026-01-15";
     $("#sel-modelo").innerHTML = estado.modelos.map((m) => `<option value="${esc(m.modelo)}">${esc(m.modelo.replace(/_/g, " "))} — ${esc(m.descripcion)}</option>`).join("");
   });
 
