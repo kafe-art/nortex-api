@@ -59,7 +59,46 @@ export function crearOrbita(ctx) {
     capa = L.featureGroup().addTo(mapa);
     contorno = L.polygon([], { color: "#FF9800", weight: 3, dashArray: "6 6" }).addTo(mapa);
     mapa.on("click", (e) => { if (!$("#det-registro").open) return; puntos.push([e.latlng.lat, e.latlng.lng]); trazar(); });
+    mapa.on("move zoom resize", () => posicionarHaces());
+    addEventListener("resize", () => posicionarHaces());
     return mapa;
+  }
+  function centroParcela() {
+    const p = ctx.parcelaActiva();
+    if (capa && capa.getLayers().length) return capa.getBounds().getCenter();
+    if (p?.lat != null && p?.lon != null) return [p.lat, p.lon];
+    return null;
+  }
+  function posicionarHaces() {
+    const svg = $("#haces");
+    if (!svg || !svg.children.length) return;
+    const rVista = vista.getBoundingClientRect();
+    if (!rVista.width || !rVista.height) return;
+    let dx = 50, dy = 50;
+    const c = mapa && centroParcela();
+    if (c && mapa) {
+      const pt = mapa.latLngToContainerPoint(c);
+      dx = (pt.x / rVista.width) * 100;
+      dy = (pt.y / rVista.height) * 100;
+    }
+    const items = $$("#satelites li");
+    $$(".haz", svg).forEach((g, i) => {
+      const li = items[i];
+      let x1 = SATELITES[i]?.x ?? 50, y1 = 18;
+      if (li) {
+        const rLi = li.getBoundingClientRect();
+        if (rLi.width) {
+          x1 = ((rLi.left + rLi.width / 2 - rVista.left) / rVista.width) * 100;
+          y1 = ((rLi.bottom - rVista.top) / rVista.height) * 100;
+        }
+      }
+      $$("line", g).forEach((ln) => {
+        ln.setAttribute("x1", x1.toFixed(2)); ln.setAttribute("y1", y1.toFixed(2));
+        ln.setAttribute("x2", dx.toFixed(2)); ln.setAttribute("y2", dy.toFixed(2));
+      });
+    });
+    const dest = $(".haz-destino", svg);
+    if (dest) { dest.setAttribute("cx", dx.toFixed(2)); dest.setAttribute("cy", dy.toFixed(2)); }
   }
   function dibujarParcela() {
     const p = ctx.parcelaActiva();
@@ -93,6 +132,7 @@ export function crearOrbita(ctx) {
           nota: ok ? `${num(f.filas)} registros${f.desde ? ` del ${f.desde} al ${f.hasta}` : ""}. Serie archivada; no es una señal en vivo.`
             : "Serie sin descargar: usa «Traer datos de la NASA» en Mi parcela.", estado: ok ? "real" : "por determinar" })}</li>`;
     }).join("");
+    requestAnimationFrame(posicionarHaces);
   }
 
   /* ---- Vuelo ------------------------------------------------------------------------------------ */
@@ -164,21 +204,86 @@ export function crearOrbita(ctx) {
       <div class="franjas" role="group" aria-label="Temperatura máxima media por año">${anios.map((y, i) => `<button type="button" class="franja" data-anio="${y}"
         style="background:${colorCalor(rel(medias[i]))}" aria-label="Año ${y}: máxima media ${num(medias[i], 1)} grados${pico[y] >= 0.4 ? `; pico ICEN ${num(pico[y], 2)}` : ""}">
         ${pico[y] >= 0.4 ? `<i class="nino" style="--pico:${Math.min(1, pico[y] / 4).toFixed(2)}"></i>` : ""}${mayores.includes(y) ? `<span>${y}</span>` : ""}</button>`).join("")}</div>
+      <label class="clima-slider"><span>Año histórico: <b id="anio-elegido"></b></span>
+        <input id="clima-rango" type="range" min="0" max="${anios.length - 1}" value="${anios.length - 1}" step="1"></label>
       <p class="ayuda">Azul → terracota: máxima media anual, de ${num(min, 1)} a ${num(max, 1)} °C. Punto blanco: algún mes con ICEN ≥ 0,4 (crece con el pico).
         ${mayores.length ? `Picos ICEN más altos del periodo: ${mayores.map((y) => `<b>${y}</b> (+${num(pico[y], 1)})`).join(", ")}.` : ""}
         ${re.status === "rejected" ? "ICEN no disponible." : "Un mes aislado sobre el criterio no declara un evento oficial."}</p>
       <div id="meses-clima"></div>`;
     const abrir = (y) => {
+      const idx = anios.indexOf(y);
+      if ($("#anio-elegido", el)) $("#anio-elegido", el).textContent = String(y);
+      if ($("#clima-rango", el) && idx >= 0) { $("#clima-rango", el).value = String(idx); $("#clima-rango", el).setAttribute("aria-valuetext", String(y)); }
       $$(".franja", el).forEach((b) => b.setAttribute("aria-pressed", Number(b.dataset.anio) === y));
+      const delAnio = filas.filter((f) => f.anio === y);
+      const calido = delAnio.length ? delAnio.reduce((a, b) => (a.media > b.media ? a : b)) : null;
       $("#meses-clima").innerHTML = `<p class="eyebrow">${y}</p><div class="meses">${MESES.map((mes, k) => {
         const x = filas.find((f) => f.anio === y && f.mes === k + 1), en = enso.find((f) => f.anio === y && f.mes === k + 1);
         return `<div style="--mes:${x ? colorCalor(calor01(x.media)) : "#5f5650"}"><small>${mes}</small>${dato(x ? `${num(x.media, 1)}°` : "s/d", {
           titulo: `Tmax media · ${mes} ${y}`, fuente: "NASA POWER · /serie/power · agregado mensual", categoria: "modelado",
           nota: x ? `${x.dias} días con dato. Media de las máximas diarias.` : "Sin registros", estado: x ? "real" : "por determinar" })}${
-          en?.media >= 0.4 ? `<em title="ICEN ${en.media}">ICEN +${num(en.media, 1)}</em>` : ""}</div>`; }).join("")}</div>`;
+          en?.media >= 0.4 ? `<em title="ICEN ${en.media}">ICEN +${num(en.media, 1)}</em>` : ""}</div>`; }).join("")}</div>${
+        calido ? `<p class="ayuda">En ${y}, <b>${MESES[calido.mes - 1]}</b> tuvo la mayor Tmax media mensual: ${dato(`${num(calido.media, 1)} °C`, {
+          titulo: `Mes más cálido de ${y}`, fuente: "NASA POWER · medias mensuales", nota: `${calido.dias} días observados en el mes.`, categoria: "modelado" })}.</p>` : ""}`;
     };
     $$(".franja", el).forEach((b) => { b.onclick = () => abrir(Number(b.dataset.anio)); });
+    $("#clima-rango", el)?.addEventListener("input", (ev) => abrir(anios[Number(ev.target.value)]));
     abrir(mayores[0] ?? anios.at(-1));
+  }
+
+  async function chequeo() {
+    const id = estado.parcela, v = estado.version, el = $("#chequeo-cuerpo");
+    if (!el) return;
+    if (!id) { el.innerHTML = ""; return; }
+    el.innerHTML = cargando("Consultando datos de suelo, relieve y riego…");
+    const consultas = await Promise.allSettled([
+      leer(`/parcelas/${id}/serie/soilgrids`),
+      leer(`/parcelas/${id}/serie/srtm`),
+      leer(`/datos/suelo_laboratorio?aoi_id=${id}`),
+      leer("/datos/pcr"),
+      leer("/datos/turnos"),
+      leer(`/datos/riego_parcela?aoi_id=${id}`),
+    ]);
+    if (v !== estado.version) return;
+    const [soil, rel, lab, pcr, turn, riego] = consultas.map((x) => (x.status === "fulfilled" ? x.value : []));
+    const ultimo = (arr, key) => [...arr].filter((x) => x[key] != null).sort((a, b) =>
+      String(a.fecha_muestreo || a.fecha || a.fecha_inicio || a.date || "").localeCompare(String(b.fecha_muestreo || b.fecha || b.fecha_inicio || b.date || ""))).at(-1);
+    const serie = (arr, key, label, unit) => {
+      const x = ultimo(arr.filter((r) => r.variable === key), "value");
+      return dato(x ? `${num(x.value, 3)} ${unit}` : "por determinar", {
+        titulo: label, fuente: x?.source || x?.product || key,
+        nota: x ? `Fecha: ${x.date || "no declarada"}. Estimación satelital/regional.` : "Fuente no disponible.",
+        estado: x ? "real" : "por determinar" });
+    };
+    const campo = (key, varname, label, unit) => {
+      const x = ultimo(lab, key);
+      return x ? dato(`${num(x[key], 3)} ${unit}`, { titulo: label, fuente: x.fuente, nota: `Muestreo: ${x.fecha_muestreo}. Análisis de laboratorio declarado.` })
+        : serie(soil, varname, label, unit);
+    };
+    const registros = (arr, keys, titulo) => arr.length
+      ? arr.slice(-4).map((x) => `<span class="reg-item">${dato(keys.map((k) => `${k}: ${x[k] ?? "—"}`).join(" · "), {
+          titulo, fuente: x.fuente || x.comision || "declarado", nota: JSON.stringify(x) })}</span>`).join(" ")
+      : `<span class="ayuda">sin registros declarados</span>`;
+    el.innerHTML = `<div class="chequeo-grid">
+      <div class="chequeo-card">
+        <p class="eyebrow">Agua del suelo</p>
+        <p>Capacidad de campo (θFC): ${campo("theta_fc", "soil_theta_fc", "Capacidad de campo", "m³/m³")}</p>
+        <p>Punto de marchitez (θWP): ${campo("theta_wp", "soil_theta_wp", "Punto de marchitez", "m³/m³")}</p>
+        <p class="ayuda">${lab.length ? "Usando análisis de laboratorio declarado." : `Sin análisis de laboratorio (usa SoilGrids) · <a href="${API}/plantillas/suelo_laboratorio.csv" download>descargar plantilla CSV</a>`}</p>
+      </div>
+      <div class="chequeo-card">
+        <p class="eyebrow">Relieve y drenaje</p>
+        <p>Pendiente (SRTM): ${serie(rel, "slope", "Pendiente del terreno (SRTM)", "%")}</p>
+        <p>Arcilla (SoilGrids): ${serie(soil, "soil_clay", "Contenido de arcilla (SoilGrids)", "%")}</p>
+        <p>Napa / salinidad: ${registros(lab, ["napa_m", "ece_dsm"], "Análisis de suelo (napa y CEe)")}</p>
+      </div>
+      <div class="chequeo-card">
+        <p class="eyebrow">Agua de riego declarada</p>
+        <p>PCR (dotación): ${registros(pcr, ["cultivo", "dotacion_m3_ha", "comision"], "Plan de Cultivo y Riego (PCR)")}</p>
+        <p>Turnos de junta: ${registros(turn, ["intervalo_dias", "comision"], "Turnos de riego declarados")}</p>
+        <p>Sistema en parcela: ${registros(riego, ["sistema", "eficiencia"], "Riego declarado en la parcela")}</p>
+      </div>
+    </div>`;
   }
 
   async function solidez() {
@@ -203,12 +308,13 @@ export function crearOrbita(ctx) {
 
   async function entrar() {
     vista.dataset.fase = "enlace"; texto.textContent = "";
-    info(); clima(); solidez();
+    info(); chequeo(); clima(); solidez();
     await leerFuentes(); senales(); pintarHaces(false);
     try {
       const m = await asegurarMapa(); m.invalidateSize();
       const p = dibujarParcela();
       if (p) m.fitBounds(capa.getBounds().pad(0.6), { maxZoom: 16, animate: false }); else m.setView([-4.92, -80.34], 11);
+      posicionarHaces();
     } catch (e) { $("#mapa").innerHTML = `<p class="aviso">${esc(e.message)} Puedes registrar una chacra pegando coordenadas.</p>`; }
   }
 
@@ -228,7 +334,7 @@ export function crearOrbita(ctx) {
       if (t.estado === "error") throw new Error(t.error);
       await ctx.datosCambiaron();
       msg.textContent = "Descarga terminada. Revisa el estado de cada fuente.";
-      await leerFuentes(); senales(t.fuentes || []); info(); clima(); solidez();
+      await leerFuentes(); senales(t.fuentes || []); info(); chequeo(); clima(); solidez();
     } catch (e) { msg.textContent = e.message; }
     finally { btn.disabled = false; vista.classList.remove("descargando"); pintarHaces(false); }
   };
@@ -263,7 +369,7 @@ export function crearOrbita(ctx) {
     try {
       const r = await api(`/importar/${f.get("modelo")}`, { method: "POST", body: cuerpo });
       $("#msg-csv").textContent = `${r.filas_guardadas} filas guardadas.`;
-      await ctx.datosCambiaron(); solidez();
+      await ctx.datosCambiaron(); chequeo(); solidez();
     } catch (e) { $("#msg-csv").textContent = e.message; }
   };
   const parametro = () => { const c = estado.cultivos.find((x) => x.id === $("#val-cultivo").value), p = c?.parametros[$("#val-parametro").value];

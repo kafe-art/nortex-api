@@ -99,6 +99,25 @@
       <p class="eyebrow">F2 · Laboratorio de cultivos</p>
       <h2 id="lab-titulo">¿Qué siembro?</h2>
       <p class="ayuda" id="lab-contexto"></p>
+      <div class="barra-consulta" aria-label="Controles rápidos de la consulta">
+        <label>Siembra <input type="date" id="lab-inicio"></label>
+        <label>Riego
+          <select id="lab-riego">
+            <option value="">Según la parcela</option>
+            <option value="0.5">Gravedad · 0,5</option>
+            <option value="0.9">Goteo · 0,9</option>
+          </select>
+        </label>
+        <label>Historia climática
+          <select id="lab-enso">
+            <option value="">Todos los años</option>
+            <option value="nino">Solo El Niño</option>
+            <option value="neutro">Solo neutros</option>
+            <option value="nina">Solo La Niña</option>
+          </select>
+        </label>
+        <button type="button" class="enlace" id="lab-mas-ajustes">Más ajustes…</button>
+      </div>
     </div>
     <div id="baraja" class="baraja" role="listbox" aria-label="Cultivos del valle, en el orden de la API" tabindex="0"></div>
     <p class="baraja-pista ayuda">Desliza, usa las flechas o toca una carta: el suelo y el cielo cambian con el cultivo.</p>
@@ -154,6 +173,7 @@
     <div class="orbita-panel" id="orbita-panel">
       <p class="eyebrow">Mi parcela</p>
       <h2 id="orbita-titulo">Desde la órbita hasta tu chacra</h2>
+      <label class="selector-chacra">Chacra activa <select id="orbita-parcela"></select></label>
       <div id="parcela-info"></div>
       <div class="fila-botones">
         <button id="btn-revolar" type="button">Repetir el vuelo</button>
@@ -162,6 +182,10 @@
       <div id="progreso" class="mensaje" role="status"></div>
       <ul id="senales" class="senales" aria-label="Todas las fuentes de datos"></ul>
 
+      <details class="bloque" open>
+        <summary>Chequeo de la chacra (suelo, relieve y riego)</summary>
+        <div id="chequeo-cuerpo"></div>
+      </details>
       <details class="bloque" open>
         <summary>El archivo del clima</summary>
         <div id="clima-cuerpo"></div>

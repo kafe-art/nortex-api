@@ -42,7 +42,7 @@ export function crearSecuencia(ctx) {
             ${cultivoVivo(p.cultivo)}
             <button type="button" class="giro" data-cambio="1" aria-label="Cultivo siguiente">›</button>
           </div>
-          <label class="oculto-label">Cultivo<select data-campo="cultivo">${opts(p.cultivo)}</select></label>
+          <label>Cultivo<select data-campo="cultivo">${opts(p.cultivo)}</select></label>
           <label>Siembra<input type="date" data-campo="inicio" value="${esc(p.inicio)}" required></label>
           <div class="pieza-resultado"></div>
         </div></div>`).join("")}`;

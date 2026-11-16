@@ -50,7 +50,12 @@ function opciones() {
   if (formAjustes.elements.condicion_enso.value) o.condicion_enso = formAjustes.elements.condicion_enso.value;
   return o;
 }
-function invalidar() { estado.version++; emitir("invalidar"); }
+function sincronizarControles() {
+  if ($("#lab-inicio")) $("#lab-inicio").value = estado.inicio;
+  if ($("#lab-riego")) $("#lab-riego").value = formAjustes.elements.eficiencia.value;
+  if ($("#lab-enso")) $("#lab-enso").value = formAjustes.elements.condicion_enso.value;
+}
+function invalidar() { estado.version++; sincronizarControles(); emitir("invalidar"); }
 function alCambiarAjustes() {
   estado.inicio = $("#aj-inicio").value || estado.inicio;
   invalidar(); escenas[estado.escena]?.refrescar?.();
@@ -62,6 +67,11 @@ formAjustes.addEventListener("input", (ev) => {
 });
 formAjustes.addEventListener("reset", () => setTimeout(() => { $("#sel-parcela").value = estado.parcela; $("#aj-inicio").value = estado.inicio; alCambiarAjustes(); }));
 $("#sel-parcela").onchange = (e) => elegirParcela(e.target.value);
+$("#orbita-parcela")?.addEventListener("change", (e) => elegirParcela(e.target.value));
+$("#lab-inicio")?.addEventListener("change", (e) => { if (e.target.value) { $("#aj-inicio").value = e.target.value; alCambiarAjustes(); } });
+$("#lab-riego")?.addEventListener("change", (e) => { formAjustes.elements.eficiencia.value = e.target.value; alCambiarAjustes(); });
+$("#lab-enso")?.addEventListener("change", (e) => { formAjustes.elements.condicion_enso.value = e.target.value; alCambiarAjustes(); });
+$("#lab-mas-ajustes")?.addEventListener("click", () => abrirAjustes(true));
 function abrirAjustes(abrir = $("#ajustes").hidden) {
   $("#ajustes").hidden = !abrir; $("#btn-ajustes").setAttribute("aria-expanded", abrir);
   if (abrir) $("#sel-parcela").focus(); else $("#btn-ajustes").focus();
@@ -104,14 +114,17 @@ async function porLaPuerta(destino) {
 /* ---- Parcelas ----------------------------------------------------------------------------------- */
 const parcelaActiva = () => estado.parcelas.find((p) => p.aoi_id === estado.parcela);
 async function elegirParcela(id) {
-  estado.parcela = id; localStorage.setItem("nortexParcela", id); $("#sel-parcela").value = id;
+  estado.parcela = id; localStorage.setItem("nortexParcela", id);
+  $("#sel-parcela").value = id; if ($("#orbita-parcela")) $("#orbita-parcela").value = id;
   invalidar(); emitir("parcela");
   await escenas[estado.escena]?.refrescar?.();
 }
 async function cargarParcelas(id) {
   estado.parcelas = await api("/parcelas");
-  $("#sel-parcela").innerHTML = '<option value="">Elige tu chacra</option>' + estado.parcelas.map((p) =>
+  const opcionesHtml = '<option value="">Elige tu chacra</option>' + estado.parcelas.map((p) =>
     `<option value="${esc(p.aoi_id)}">${esc(p.nombre)}</option>`).join("");
+  $("#sel-parcela").innerHTML = opcionesHtml;
+  if ($("#orbita-parcela")) $("#orbita-parcela").innerHTML = opcionesHtml;
   // Por defecto: la última usada; si no, la parcela de prueba `ejemplo_sl`; si no, la primera.
   const existe = (x) => estado.parcelas.some((p) => p.aoi_id === x);
   await elegirParcela(id ?? (existe(estado.parcela) ? estado.parcela : existe("ejemplo_sl") ? "ejemplo_sl" : estado.parcelas[0]?.aoi_id || ""));

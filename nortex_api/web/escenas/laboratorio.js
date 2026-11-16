@@ -16,7 +16,7 @@
  *     con extremos.tmax_floracion.media_c. */
 
 import { evaluar } from "../api.js";
-import { $, $$, esc, num, pct, NOMBRES, resorte, inclinar, limitar, calor01, fechaCorta, errorHtml, cargando } from "../util.js";
+import { $, $$, esc, num, pct, etq, NOMBRES, resorte, inclinar, limitar, calor01, fechaCorta, errorHtml, cargando } from "../util.js";
 import { cultivoVivo } from "../visuales/cultivos.js";
 import { montarAutopsia } from "../visuales/autopsia.js";
 import { costoDe } from "../visuales/balanza.js";
@@ -59,12 +59,14 @@ export function crearLaboratorio(ctx) {
     const costo = costoDe(estado.economia, d.cultivo);
     const maxCosto = Math.max(0, ...estado.cultivos.map((c) => costoDe(estado.economia, c.id)?.costo_soles_ha || 0));
     const umbralPend = d.extremos?.umbral_calor_validado === false;
+    const altos = (d.riesgo || []).filter((r) => r.nivel === "alto").length;
     return `<div class="carta" role="option" data-i="${i}" aria-selected="false" id="carta-${esc(d.cultivo)}">
       <div class="carta-cuerpo">
         <span class="carta-orden">${i + 1}.º en el orden de la API</span>
         ${cultivoVivo(d.cultivo)}
         <h3>${esc(cat?.nombre || NOMBRES[d.cultivo])}</h3>
         <p class="cientifico"><i>${esc(cat?.cientifico || "")}</i> · ${cat?.ciclo_dias ? `${cat.ciclo_dias} días` : esc(cat?.tipo || "")}</p>
+        <div class="carta-estado">${etq(d.viabilidad.estado)}${etq(`${altos} ${altos === 1 ? "riesgo alto" : "riesgos altos"}`, altos ? "rojo" : "verde")}</div>
         <ul class="metaforas">
           ${metafora("", fila("gota", gotas), "Sed de la campaña", { titulo: "Demanda neta de agua", valor: sed == null ? "por determinar" : `${num(sed)} mm`,
             fuente: "POST /evaluar/f2 · tabla.demanda_neta_mm (Σ máx(0, ETc − lluvia), déficit medio)", categoria: "simulado",
