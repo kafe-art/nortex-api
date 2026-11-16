@@ -50,6 +50,10 @@ def test_parcela_valida_e_invalida(cliente):
                                                  [-80.33, -5.09], [-80.34, -5.09]]]}
     r = cliente.post("/parcelas", json={"aoi_id": "mala", "nombre": "x", "geometria": moño})
     assert r.status_code == 422
+    fuera = {"type": "Point", "coordinates": [-77.04, -12.04]}
+    r_fuera = cliente.post("/parcelas", json={"aoi_id": "lima", "nombre": "Fuera", "geometria": fuera})
+    assert r_fuera.status_code == 422
+    assert "San Lorenzo" in r_fuera.json()["detail"]
     assert len(cliente.get("/parcelas").json()) == 1
 
 

@@ -101,7 +101,7 @@ def area_ha(geometria: dict) -> float | None:
 
 
 def registrar_parcela(aoi_id: str, nombre: str, geometria: dict) -> dict:
-    """Valida y guarda una parcela (Point o Polygon GeoJSON en lon/lat)."""
+    """Valida y guarda una parcela (Point o Polygon GeoJSON en lon/lat) dentro de San Lorenzo."""
     g = shape(geometria)
     if g.geom_type not in {"Point", "Polygon"}:
         raise ValueError("La geometría debe ser Point o Polygon (GeoJSON, lon/lat)")
@@ -110,6 +110,11 @@ def registrar_parcela(aoi_id: str, nombre: str, geometria: dict) -> dict:
     oeste, sur, este, norte = g.bounds
     if (este - oeste) > 0.25 or (norte - sur) > 0.25:
         raise ValueError("La parcela excede 0,25° por lado")
+    # Delimitación del valle de San Lorenzo (Tambogrande / Las Lomas, Piura)
+    if oeste < -80.52 or este > -80.12 or sur < -5.22 or norte > -4.62:
+        raise ValueError(
+            "La finca debe estar dentro de la delimitación del valle de San Lorenzo (Tambogrande, Piura)"
+        )
     punto = g.representative_point() if g.geom_type == "Polygon" else g
     p = {"aoi_id": aoi_id, "nombre": nombre, "geometria": geometria, "lat": punto.y, "lon": punto.x,
          "area_ha": area_ha(geometria), "elevation_m": None}
@@ -267,11 +272,18 @@ def _decision_web(decision) -> dict:
     return salida
 
 
+def _area_ha(aoi_id: str) -> float:
+    """Área de la parcela para pasar de mm a m³ (el motor asume 1 ha si no se le dice)."""
+    parcela = almacen.parcela(aoi_id) or {}
+    return float(parcela.get("area_ha") or 1.0)
+
+
 def evaluar_f1(aoi_id: str, cultivo: str, desde, hasta, paso_dias: int,
                historial: list[str] | None = None, **kw) -> dict:
     from nortex_motor.decision import f1_ventanas
 
     aplicar_validaciones()
+    kw.setdefault("area_ha", _area_ha(aoi_id))
     out = f1_ventanas(contexto(aoi_id), cultivo, desde, hasta, paso_dias,
                       historial=historial or None, **kw)
     return {"funcion": "F1", "regla_orden": out["regla_orden"], "tabla": _tabla(out["tabla"]),
@@ -283,6 +295,7 @@ def evaluar_f2(aoi_id: str, cultivos: list[str], inicio, historial: list[str],
     from nortex_motor.decision import f2_cultivos
 
     aplicar_validaciones()
+    kw.setdefault("area_ha", _area_ha(aoi_id))
     out = f2_cultivos(contexto(aoi_id), cultivos, inicio, historial,
                       renovacion_confirmada=renovacion_confirmada, **kw)
     return {"funcion": "F2", "regla_orden": out["regla_orden"], "tabla": _tabla(out["tabla"]),

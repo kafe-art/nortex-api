@@ -103,9 +103,9 @@
           </div>
         </div>
       </div>
-      <h1 id="portal-titulo">Tu chacra está viva.<br><em>Pregúntale.</em></h1>
-      <p class="portal-sub">Más de 30 años de historia satelital de este valle, convertidos en una respuesta que se
-        puede ver. Frecuencia histórica, no pronóstico.</p>
+      <h1 id="portal-titulo">Tus decisiones de siembra,<br><em>respaldadas por 30 años de ciencia espacial</em></h1>
+      <p class="portal-sub">Cruzamos el comportamiento climático histórico de San Lorenzo con la realidad de tu suelo
+        para recomendarte qué sembrar y cuándo hacerlo con total certeza.</p>
       <div class="puertas">
         <button class="puerta puerta-que" type="button" data-puerta="laboratorio">
           <span class="puerta-brillo" aria-hidden="true"></span>
@@ -120,7 +120,7 @@
       </div>
       <div class="portal-menor">
         <button type="button" class="enlace" data-ir="secuencia">Armar 3 campañas seguidas</button>
-        <button type="button" class="enlace" data-ir="orbita">Ver mi parcela desde el espacio</button>
+        <button type="button" class="enlace" data-ir="orbita">Seleccionar mi finca en el Valle de San Lorenzo</button>
       </div>
       <p id="portal-chacra" class="portal-chacra" role="status"></p>
     </div>
@@ -200,20 +200,47 @@
       <!-- Haces de los satélites: se dibujan con el estado real de GET /parcelas/{id}/fuentes -->
       <svg id="haces" class="haces" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
       <ul id="satelites" class="satelites" aria-label="Fuentes satelitales de la parcela"></ul>
+      <div class="leyenda-valle" aria-label="Delimitación geográfica permitida">
+        <span><i class="borde-valle" aria-hidden="true"></i> Delimitación: Valle de San Lorenzo · Tambogrande</span>
+        <button type="button" id="btn-ver-valle">Ver valle completo</button>
+      </div>
       <p id="vuelo-texto" class="vuelo-texto" role="status"></p>
       <button id="vuelo-saltar" class="enlace vuelo-saltar" type="button" hidden>Saltar el vuelo</button>
     </div>
     <div class="orbita-panel" id="orbita-panel">
-      <p class="eyebrow">Mi parcela</p>
+      <p class="eyebrow">Mi parcela · Valle de San Lorenzo</p>
       <h2 id="orbita-titulo">Desde la órbita hasta tu chacra</h2>
       <label class="selector-chacra">Chacra activa <select id="orbita-parcela"></select></label>
       <div id="parcela-info"></div>
       <div class="fila-botones">
+        <button id="btn-dibujar-finca" type="button">Seleccionar mi finca en el mapa</button>
         <button id="btn-revolar" type="button">Repetir el vuelo</button>
         <button id="btn-descargar" class="primario" type="button">Traer datos de la NASA</button>
       </div>
       <div id="progreso" class="mensaje" role="status"></div>
       <ul id="senales" class="senales" aria-label="Todas las fuentes de datos"></ul>
+
+      <details class="bloque" id="det-registro" open>
+        <summary>Seleccionar / registrar mi finca en el Valle de San Lorenzo</summary>
+        <form id="form-parcela">
+          <p class="ayuda">Toca el mapa dentro del <b>perímetro punteado verde del Valle de San Lorenzo (Tambogrande)</b> para marcar las esquinas de tu finca (mínimo 3 esquinas o 1 punto central).</p>
+          <label>Nombre de la finca <input name="nombre" id="inp-nombre-finca" required placeholder="Finca San Isidro, sector Malingas"></label>
+          <label>Identificador <input name="aoi_id" id="inp-aoi-finca" required pattern="[a-z0-9_]{3,40}" placeholder="finca_san_isidro"
+                 title="minúsculas, números y _ (3 a 40)"></label>
+          <p id="info-poligono" class="ayuda">0 puntos marcados · toca el mapa dentro del valle.</p>
+          <div class="fila-botones">
+            <button type="button" id="btn-deshacer">Deshacer punto</button>
+            <button type="button" id="btn-limpiar">Borrar contorno</button>
+          </div>
+          <label>o pega coordenadas dentro del valle (latitud, longitud por línea)
+            <textarea id="coords" rows="3" placeholder="-4.9921, -80.3127"></textarea></label>
+          <div class="fila-botones">
+            <button type="button" id="btn-coords">Usar coordenadas</button>
+            <button type="submit" class="primario">Guardar mi finca</button>
+          </div>
+        </form>
+        <div id="msg-parcela" class="mensaje" role="status"></div>
+      </details>
 
       <details class="bloque" open>
         <summary>Chequeo de la chacra (suelo, relieve y riego)</summary>
@@ -226,27 +253,6 @@
       <details class="bloque" open>
         <summary>¿Qué tan sólida es la decisión?</summary>
         <div id="solidez"></div>
-      </details>
-      <details class="bloque" id="det-registro">
-        <summary>Registrar una chacra nueva</summary>
-        <form id="form-parcela">
-          <p class="ayuda">Con este panel abierto, toca el mapa para marcar las esquinas (o un solo punto).</p>
-          <label>Nombre <input name="nombre" required placeholder="Chacra de Juan, lote 3"></label>
-          <label>Identificador <input name="aoi_id" required pattern="[a-z0-9_]{3,40}" placeholder="chacra_juan_3"
-                 title="minúsculas, números y _ (3 a 40)"></label>
-          <p id="info-poligono" class="ayuda">0 puntos marcados.</p>
-          <div class="fila-botones">
-            <button type="button" id="btn-deshacer">Deshacer punto</button>
-            <button type="button" id="btn-limpiar">Borrar contorno</button>
-          </div>
-          <label>o pega coordenadas (latitud, longitud por línea)
-            <textarea id="coords" rows="3" placeholder="-4.9921, -80.3127"></textarea></label>
-          <div class="fila-botones">
-            <button type="button" id="btn-coords">Usar coordenadas</button>
-            <button type="submit" class="primario">Guardar chacra</button>
-          </div>
-        </form>
-        <div id="msg-parcela" class="mensaje" role="status"></div>
       </details>
       <details class="bloque">
         <summary>Cargar datos de la Junta, laboratorio o SIEA (CSV)</summary>

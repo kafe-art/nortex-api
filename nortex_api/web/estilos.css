@@ -147,9 +147,9 @@ details > summary::-webkit-details-marker { display: none; }
   .portal-insignias { border-radius: 24px; padding: .75rem 1rem; gap: .6rem 1rem; }
   .insignia-sep { display: none; }
 }
-.portal h1 { font-family: var(--fuente-editorial); font-size: clamp(2.6rem, 1.4rem + 5.8vw, 5.4rem); font-weight: 600; line-height: 1.02; text-wrap: balance; letter-spacing: -.03em; }
-.portal h1 em { font-family: var(--fuente-editorial); font-style: italic; font-weight: 400; color: var(--t-verde); background: linear-gradient(transparent 66%, var(--lima) 66%); padding: 0 .14em; }
-.portal-sub { font-size: clamp(1.02rem, .9rem + .6vw, 1.2rem); max-width: 36rem; margin: 1.4rem auto 2.6rem; color: var(--suave); text-wrap: pretty; }
+.portal h1 { font-family: var(--fuente-editorial); font-size: clamp(2.15rem, 1.15rem + 3.9vw, 4.15rem); font-weight: 600; line-height: 1.06; text-wrap: balance; letter-spacing: -.025em; }
+.portal h1 em { font-family: var(--fuente-editorial); font-style: italic; font-weight: 400; color: var(--t-verde); background: linear-gradient(transparent 68%, var(--lima) 68%); padding: 0 .12em; }
+.portal-sub { font-size: clamp(1rem, .88rem + .55vw, 1.18rem); max-width: 44rem; margin: 1.35rem auto 2.5rem; color: var(--suave); text-wrap: pretty; }
 .puertas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.4rem; perspective: 1100px; }
 .puerta { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; position: relative; overflow: hidden; display: grid; justify-items: center; gap: 1rem; padding: 2.2rem 1.6rem 2rem;
   border-radius: 32px; border: 1px solid var(--linea); background: var(--papel); min-height: 240px; text-align: center; box-shadow: var(--sombra);
@@ -385,6 +385,12 @@ body.en-vuelo .orbita-vista { position: fixed; inset: 0; height: auto; z-index: 
 .satelites svg { width: 44px; height: 22px; fill: var(--lima); stroke: var(--tinta); stroke-width: 1.5; } .satelites small { font-size: .7rem; line-height: 1.25; }
 body[data-escena=orbita] .satelites li { top: calc(var(--hud) + 8px); } body.en-vuelo .satelites li { top: 5%; }
 @media (max-width: 600px) { .satelites small { display: none; } }
+.leyenda-valle { position: absolute; left: 1rem; bottom: 1.2rem; z-index: 515; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; padding: .45rem .85rem; border-radius: 999px;
+  background: rgba(18, 48, 31, .86); backdrop-filter: blur(8px); color: #fff; font-size: .78rem; border: 1px solid rgba(217, 242, 58, .4); box-shadow: 0 8px 20px rgba(0, 0, 0, .35); }
+.leyenda-valle span { display: inline-flex; align-items: center; gap: .45rem; }
+.borde-valle { width: 18px; height: 10px; border: 2px dashed var(--lima); border-radius: 3px; background: rgba(217, 242, 58, .15); display: inline-block; }
+.leyenda-valle button { min-height: 28px; padding: .15rem .65rem; font-size: .74rem; background: var(--lima); color: var(--tinta); border: 0; font-weight: 600; }
+body.en-vuelo .leyenda-valle { opacity: 0; pointer-events: none; }
 .vuelo-texto { position: absolute; left: 0; right: 0; bottom: 5.2rem; text-align: center; z-index: 520; font: 500 clamp(1.1rem, 3vw, 1.6rem) var(--fuente); text-shadow: 0 2px 16px #000; padding: 0 1rem; pointer-events: none; color: #fff; }
 .vuelo-texto:empty { display: none; }
 .vuelo-saltar { position: absolute; left: 50%; bottom: 1.4rem; transform: translateX(-50%); z-index: 530; background: var(--lima); color: var(--tinta); padding: .5rem 1.35rem; min-height: 40px; border-radius: 999px; font-weight: 600; text-decoration: none; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }

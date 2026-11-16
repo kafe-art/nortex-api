@@ -44,10 +44,46 @@ const SATELITES = [
 const NOMBRE_FUENTE = { power: "NASA POWER", imerg: "GPM IMERG", srtm: "SRTM (relieve)", soilgrids: "SoilGrids (suelo)", enso: "ICEN / ONI (El Niño)",
   estacion: "Estación NOAA Piura", senamhi_reportes: "Reportes SENAMHI (reservorio)" };
 
+/* Perímetro de delimitación del Valle de San Lorenzo (Tambogrande / Las Lomas, Piura). */
+const POLIGONO_VALLE = [
+  [-4.63, -80.22],
+  [-4.68, -80.14],
+  [-4.88, -80.13],
+  [-5.08, -80.16],
+  [-5.21, -80.28],
+  [-5.19, -80.44],
+  [-4.98, -80.51],
+  [-4.76, -80.47],
+  [-4.65, -80.34],
+];
+
+function dentroDelValle(lat, lon) {
+  if (lat < -5.22 || lat > -4.62 || lon < -80.52 || lon > -80.12) return false;
+  let dentro = false;
+  for (let i = 0, j = POLIGONO_VALLE.length - 1; i < POLIGONO_VALLE.length; j = i++) {
+    const [yi, xi] = POLIGONO_VALLE[i], [yj, xj] = POLIGONO_VALLE[j];
+    const intersecta = ((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi);
+    if (intersecta) dentro = !dentro;
+  }
+  return dentro;
+}
+
+function areaHaAprox(pts) {
+  if (pts.length < 3) return null;
+  const latMedia = pts.reduce((a, p) => a + p[0], 0) / pts.length;
+  const escala = 111_320 * Math.cos((latMedia * Math.PI) / 180) * 110_574;
+  let suma = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [y1, x1] = pts[i], [y2, x2] = pts[(i + 1) % pts.length];
+    suma += x1 * y2 - x2 * y1;
+  }
+  return (Math.abs(suma) * 0.5 * escala) / 10_000;
+}
+
 export function crearOrbita(ctx) {
   const { estado } = ctx;
   const vista = $(".orbita-vista"), texto = $("#vuelo-texto");
-  let mapa = null, capa = null, contorno = null, puntos = [], fuentes = [], saltar = null;
+  let mapa = null, capa = null, capaValle = null, capaVertices = null, contorno = null, puntos = [], fuentes = [], saltar = null, aoiManual = false;
 
   async function asegurarMapa() {
     if (mapa) return mapa;
@@ -56,9 +92,25 @@ export function crearOrbita(ctx) {
     L.control.zoom({ position: "bottomright" }).addTo(mapa);
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 19, attribution: "Imágenes © Esri, Maxar, Earthstar Geographics" }).addTo(mapa);
+    capaValle = L.polygon(POLIGONO_VALLE, {
+      color: "#D9F23A", weight: 2.5, dashArray: "8 6", fillColor: "#D9F23A", fillOpacity: 0.04, interactive: false,
+    }).addTo(mapa);
     capa = L.featureGroup().addTo(mapa);
-    contorno = L.polygon([], { color: "#FF9800", weight: 3, dashArray: "6 6" }).addTo(mapa);
-    mapa.on("click", (e) => { if (!$("#det-registro").open) return; puntos.push([e.latlng.lat, e.latlng.lng]); trazar(); });
+    contorno = L.polygon([], { color: "#FF9800", weight: 3, dashArray: "6 6", fillColor: "#D9F23A", fillOpacity: 0.22 }).addTo(mapa);
+    capaVertices = L.layerGroup().addTo(mapa);
+    mapa.on("click", (e) => {
+      const { lat, lng } = e.latlng;
+      $("#det-registro").open = true;
+      if (!dentroDelValle(lat, lng)) {
+        $("#msg-parcela").textContent = "Fuera de límite: solo puedes seleccionar tu finca dentro de la delimitación del Valle de San Lorenzo (Tambogrande).";
+        capaValle?.setStyle({ color: "#FF5722", weight: 3.5 });
+        setTimeout(() => capaValle?.setStyle({ color: "#D9F23A", weight: 2.5 }), 1200);
+        return;
+      }
+      $("#msg-parcela").textContent = "";
+      puntos.push([Number(lat.toFixed(6)), Number(lng.toFixed(6))]);
+      trazar();
+    });
     mapa.on("move zoom resize", () => posicionarHaces());
     addEventListener("resize", () => posicionarHaces());
     return mapa;
@@ -339,13 +391,48 @@ export function crearOrbita(ctx) {
     finally { btn.disabled = false; vista.classList.remove("descargando"); pintarHaces(false); }
   };
 
-  function trazar() { contorno?.setLatLngs(puntos); $("#info-poligono").textContent = `${puntos.length} puntos marcados. El área final la calcula la API.`; }
+  function trazar() {
+    contorno?.setLatLngs(puntos);
+    if (capaVertices && globalThis.L) {
+      capaVertices.clearLayers();
+      puntos.forEach((pt, i) => {
+        globalThis.L.circleMarker(pt, { radius: 6, color: "#12301F", weight: 2, fillColor: "#D9F23A", fillOpacity: 1 })
+          .bindTooltip(`Esquina ${i + 1}`, { direction: "top" })
+          .addTo(capaVertices);
+      });
+    }
+    const ha = areaHaAprox(puntos);
+    $("#info-poligono").textContent = puntos.length === 0
+      ? "0 puntos marcados · toca el mapa dentro del valle."
+      : `${puntos.length} ${puntos.length === 1 ? "punto marcado" : "esquinas marcadas"}${ha != null ? ` · ~${num(ha, 2)} ha en San Lorenzo` : " · marca al menos 3 esquinas para un polígono"}.`;
+  }
+  $("#btn-ver-valle")?.addEventListener("click", async () => {
+    const m = await asegurarMapa();
+    if (capaValle) m.fitBounds(capaValle.getBounds().pad(0.06), { maxZoom: 12 });
+  });
+  $("#btn-dibujar-finca")?.addEventListener("click", async () => {
+    $("#det-registro").open = true;
+    const m = await asegurarMapa();
+    if (capaValle && m.getZoom() < 11) m.fitBounds(capaValle.getBounds().pad(0.08), { maxZoom: 13 });
+    $("#det-registro").scrollIntoView({ behavior: "smooth", block: "center" });
+    $("#inp-nombre-finca")?.focus();
+  });
+  $("#inp-aoi-finca")?.addEventListener("input", () => { aoiManual = $("#inp-aoi-finca").value.trim().length > 0; });
+  $("#inp-nombre-finca")?.addEventListener("input", (ev) => {
+    if (aoiManual) return;
+    const slug = ev.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
+    if ($("#inp-aoi-finca")) $("#inp-aoi-finca").value = slug.length >= 3 ? slug : slug ? `finca_${slug}` : "";
+  });
   $("#btn-deshacer").onclick = () => { puntos.pop(); trazar(); };
-  $("#btn-limpiar").onclick = () => { puntos = []; trazar(); };
+  $("#btn-limpiar").onclick = () => { puntos = []; trazar(); $("#msg-parcela").textContent = ""; };
   $("#btn-coords").onclick = () => {
     try {
       const pts = $("#coords").value.trim().split(/\n+/).map((l) => l.trim().split(/[,;\s]+/).map(Number));
       if (pts.some((p) => p.length !== 2 || p.some((x) => !Number.isFinite(x)) || Math.abs(p[0]) > 90 || Math.abs(p[1]) > 180)) throw new Error("Usa latitud, longitud por línea.");
+      if (pts.some(([la, lo]) => !dentroDelValle(la, lo))) {
+        throw new Error("Todas las coordenadas deben estar dentro de la delimitación del Valle de San Lorenzo (Tambogrande).");
+      }
       puntos = pts; trazar(); if (mapa) mapa.fitBounds(L.latLngBounds(pts).pad(0.2), { maxZoom: 17 });
       $("#msg-parcela").textContent = "";
     } catch (e) { $("#msg-parcela").textContent = e.message; }
@@ -353,13 +440,16 @@ export function crearOrbita(ctx) {
   $("#form-parcela").onsubmit = async (ev) => {
     ev.preventDefault();
     try {
-      if (puntos.length !== 1 && puntos.length < 3) throw new Error("Marca 1 punto o al menos 3 esquinas.");
+      if (puntos.length !== 1 && puntos.length < 3) throw new Error("Marca 1 punto o al menos 3 esquinas en el mapa del valle.");
+      if (puntos.some(([la, lo]) => !dentroDelValle(la, lo))) {
+        throw new Error("La finca debe estar dentro de la delimitación del Valle de San Lorenzo (Tambogrande).");
+      }
       const f = new FormData(ev.target);
       const geometria = puntos.length === 1 ? { type: "Point", coordinates: [puntos[0][1], puntos[0][0]] }
         : { type: "Polygon", coordinates: [[...puntos, puntos[0]].map(([la, lo]) => [lo, la])] };
       const p = await post("/parcelas", { aoi_id: f.get("aoi_id"), nombre: f.get("nombre"), geometria });
-      puntos = []; trazar(); ev.target.reset();
-      $("#msg-parcela").textContent = "Chacra guardada. Ahora trae sus datos de la NASA.";
+      puntos = []; aoiManual = false; trazar(); ev.target.reset();
+      $("#msg-parcela").textContent = "Finca guardada en el Valle de San Lorenzo. Ahora pulsa «Traer datos de la NASA».";
       await ctx.cargarParcelas(p.aoi_id);
     } catch (e) { $("#msg-parcela").textContent = e.message; }
   };
