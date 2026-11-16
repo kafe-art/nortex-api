@@ -16,10 +16,10 @@ dependencies = [
     "pyarrow>=14",
     "pyyaml>=6",
     "shapely>=2.0",
-    # Módulo de datos del equipo, versión fija: v0.6.1 es la primera con las 14 fuentes,
-    # get_dataset(..., aoi_path=, historico=) y el respaldo público de IMERG.
+    # Módulo de datos del equipo, versión fija: v0.6.2 incluye las 14 fuentes,
+    # get_dataset(..., aoi_path=, historico=), respaldo público de IMERG, Hyrax OPeNDAP y FAOSTAT autenticado.
     # NO usar el paquete antiguo de kafe-art/nortex-data (solo POWER, parámetro aoi_file).
-    "nortex-data @ git+https://github.com/BRYTNEI/nortex-data.git@v0.6.1",
+    "nortex-data @ git+https://github.com/BRYTNEI/nortex-data.git@v0.6.2",
     # Motor físico y de evaluación
     "nortex-motor @ git+https://github.com/kafe-art/nortex-motor.git@main",
 ]
