@@ -1,6 +1,6 @@
-# Imagen de la API + frontend de NORTEX.
+# Imagen de la API + frontend de NORTEX (con datos semilla de `ejemplo_sl` incluidos para plan Free).
 #   docker build -t nortex-api .
-#   docker run -p 8000:8000 -v nortex_datos:/datos nortex-api      → http://localhost:8000/app/
+#   docker run -p 8000:8000 nortex-api      → http://localhost:8000/app/
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
@@ -12,9 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY nortex_api ./nortex_api
-RUN pip install .
+COPY datos_semilla /datos_semilla
+RUN pip install . && mkdir -p /datos && cp -r /datos_semilla/. /datos/
 
-# Datos (SQLite + Parquet) en un volumen persistente: sin él se pierden en cada despliegue.
-VOLUME ["/datos"]
 EXPOSE 8000
-CMD ["sh", "-c", "uvicorn nortex_api.main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "[ -f /datos/nortex.db ] || cp -r /datos_semilla/. /datos/; uvicorn nortex_api.main:app --host 0.0.0.0 --port ${PORT}"]
